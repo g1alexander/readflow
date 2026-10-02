@@ -1,0 +1,70 @@
+---
+import Base from '../layouts/Base.astro';
+import CenteredPage from '../components/CenteredPage.astro';
+import BackLink from '../components/BackLink.astro';
+import Panel from '../components/Panel.astro';
+import Icon from '../components/Icon.astro';
+import { btn, pill, DISPLAY, SUBTITLE, SECTION_TITLE, STATES_ROW } from '../scripts/ui';
+const title = `${DISPLAY} leading-[1.05] text-[44px] max-md:text-[26px]`;
+const author = 'text-[17px] text-muted max-md:text-[15px]';
+---
+<Base title="Libro — Readflow">
+  <CenteredPage wide>
+    <BackLink />
+
+    <div class="grid grid-cols-[300px_minmax(0,1fr)] gap-10 items-start max-md:grid-cols-1 max-md:gap-[22px]">
+      <aside class="flex flex-col gap-4 max-md:contents">
+        <div class="max-md:flex max-md:gap-4 max-md:items-end max-md:-order-2">
+          <div id="cover" class="max-md:shrink-0"></div>
+          <div class="flex flex-col gap-1.5 min-w-0 md:hidden">
+            <h1 class={title} data-bind="title"></h1>
+            <p class={author} data-bind="author"></p>
+          </div>
+        </div>
+        <div class="bg-surface border border-line rounded-2xl p-4 flex flex-col gap-1 text-[13px] max-md:hidden">
+          <strong class="break-all" id="file-name"></strong>
+          <span class={`${SUBTITLE} text-[13px]`} id="file-meta"></span>
+        </div>
+        <div class="flex gap-2.5 max-md:hidden">
+          <button class={`${btn('outline')} flex-1`} type="button" id="download">Descargar EPUB</button>
+        </div>
+      </aside>
+
+      <div class="flex flex-col gap-6 min-w-0">
+        <div class="flex flex-col gap-2 max-md:hidden">
+          <h1 class={title} data-bind="title"></h1>
+          <p class={author} data-bind="author"></p>
+        </div>
+
+        <section class="flex flex-col gap-3" aria-labelledby="state-title">
+          <h2 class={SECTION_TITLE} id="state-title">Estado de lectura</h2>
+          <div class={STATES_ROW} id="states"></div>
+        </section>
+
+        <Panel title="Envío al Kindle" titleId="kindle-title">
+          <span slot="head" id="kindle-pill"></span>
+          <ol class="flex flex-col gap-3.5" id="timeline"></ol>
+          <div class="flex flex-wrap gap-2.5">
+            <button class={btn('outline')} type="button" id="resend"><Icon name="mail" /> Reenviar al Kindle</button>
+          </div>
+        </Panel>
+
+        <Panel title="Notas de lectura" titleId="notes-title">
+          <span slot="head" class={pill('warn')}>Opcional · importación por definir</span>
+          <p class={`${SUBTITLE} text-sm`}>Los highlights del Kindle se guardarán como Markdown con esta forma:</p>
+          <pre class="m-0 px-[18px] py-4 rounded-[14px] bg-soft text-[#3A3552] font-mono text-[13px] leading-[1.6] whitespace-pre-wrap overflow-x-auto" id="md"></pre>
+          <div class="flex flex-wrap gap-2.5">
+            <button class={btn('outline')} type="button" id="copy-md">Copiar Markdown</button>
+            <button class={btn('soft')} type="button" aria-disabled="true" disabled>Guardar en Obsidian</button>
+            <button class={btn('sky')} type="button" aria-disabled="true" disabled>Commit a GitHub</button>
+          </div>
+        </Panel>
+      </div>
+    </div>
+  </CenteredPage>
+</Base>
+
+<script>
+  import { initDetail } from '../scripts/detail';
+  initDetail();
+</script>

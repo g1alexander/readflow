@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%23C9BCF2%22/><path d=%22M10 24V9h8l4 4v11z%22 fill=%22none%22 stroke=%22%232B2840%22 stroke-width=%222%22/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <title>Tablero de lectura — Readflow</title>
+</head>
+<body data-page="board">
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="tablero.html"><span class="brand-mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B2840" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 13h8M8 17h5"/></svg></span><span class="brand-name">Readflow</span></a>
+      <nav class="nav" aria-label="Principal">
+        <a class="nav-item" href="tablero.html" aria-current="page"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg> Tablero</a>
+        <span class="nav-item is-soon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 4h3v16H5zM10 4h3v16h-3zM15.5 5l3-.8 3.6 15-3 .8z"/></svg> Biblioteca <span class="soon">Pronto</span></span>
+        <span class="nav-item is-soon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h5"/></svg> Notas <span class="soon">Pronto</span></span>
+        <span class="nav-item is-soon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg> Ajustes <span class="soon">Pronto</span></span>
+      </nav>
+      <div class="kindle-card">
+        <strong><span class="dot"></span>Kindle conectado</strong>
+        <span>[tu-correo]@kindle.com</span>
+        <small id="kindle-last"></small>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-titles">
+          <h1 class="display page-title">Tablero<span class="desktop-only"> de lectura</span></h1>
+          <p class="subtitle" id="summary"></p>
+        </div>
+        <div class="topbar-actions">
+          <label class="search">
+            <span class="sr-only">Buscar en la biblioteca</span>
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="#6B6684" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="search" type="search" placeholder="Título o autor">
+          </label>
+          <button class="btn btn-outline btn-icon mobile-only" type="button" id="search-toggle" aria-label="Buscar">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          </button>
+          <a class="btn btn-primary btn-upload" href="subir.html">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
+            Subir EPUB
+          </a>
+        </div>
+      </header>
+
+      <section class="section" aria-labelledby="now-title">
+        <h2 class="section-title" id="now-title">Leyendo ahora</h2>
+        <div class="now-scroll"><div class="now-grid" id="now"></div></div>
+      </section>
+
+      <section class="section" aria-labelledby="board-title">
+        <div class="section-head">
+          <h2 class="section-title" id="board-title">Por estado</h2>
+          <p class="hint hint-pill desktop-only"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg> Arrastra un libro a Reading y se envía solo a tu Kindle</p>
+        </div>
+        <div class="board desktop-only" id="board"></div>
+
+        <div class="tabs mobile-only" id="tabs" role="tablist" aria-label="Estados de lectura"></div>
+        <div class="mlist mobile-only" id="mlist" role="tabpanel"></div>
+        <p class="hint mobile-only">Mantén presionado un libro para cambiarlo de estado. A Reading se envía solo al Kindle.</p>
+      </section>
+    </main>
+  </div>
+
+  <a class="fab" href="subir.html" aria-label="Subir EPUB">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+  </a>
+
+  <nav class="bottom-nav" aria-label="Principal">
+    <a class="bnav-item" href="tablero.html" aria-current="page"><span class="bnav-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg></span>Tablero</a>
+    <span class="bnav-item is-soon"><span class="bnav-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 4h3v16H5zM10 4h3v16h-3zM15.5 5l3-.8 3.6 15-3 .8z"/></svg></span>Biblioteca</span>
+    <span class="bnav-item is-soon"><span class="bnav-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h5"/></svg></span>Notas</span>
+    <span class="bnav-item is-soon"><span class="bnav-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></span>Ajustes</span>
+  </nav>
+
+  <dialog class="sheet" id="move-sheet" aria-labelledby="sheet-title">
+    <div class="sheet-body">
+      <span class="sheet-grab" aria-hidden="true"></span>
+      <div class="row-between">
+        <h2 class="card-title" id="sheet-title"></h2>
+        <button class="btn btn-ghost" type="button" id="sheet-close">Cerrar</button>
+      </div>
+      <p class="subtitle" style="font-size:14px">Mover a:</p>
+      <div class="states" id="sheet-states"></div>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

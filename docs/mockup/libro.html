@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%23C9BCF2%22/><path d=%22M10 24V9h8l4 4v11z%22 fill=%22none%22 stroke=%22%232B2840%22 stroke-width=%222%22/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <title>Libro — Readflow</title>
+</head>
+<body data-page="detail">
+  <main class="page">
+    <div class="container container-lg">
+      <a class="back" href="tablero.html"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18 9 12l6-6"/></svg> Volver al tablero</a>
+
+      <div class="detail">
+        <aside class="detail-aside">
+          <div class="detail-hero">
+            <div id="cover" class="cover cover-lg"></div>
+            <div class="detail-hero-text">
+              <h1 class="display detail-title" data-bind="title"></h1>
+              <p class="detail-author" data-bind="author"></p>
+            </div>
+          </div>
+          <div class="file-card">
+            <strong id="file-name"></strong>
+            <span class="subtitle" style="font-size:13px" id="file-meta"></span>
+          </div>
+          <div class="row">
+            <button class="btn btn-outline grow" type="button" id="download">Descargar EPUB</button>
+          </div>
+        </aside>
+
+        <div class="detail-main">
+          <div class="desktop-only" style="display:flex;flex-direction:column;gap:8px">
+            <h1 class="display detail-title" data-bind="title"></h1>
+            <p class="detail-author" data-bind="author"></p>
+          </div>
+
+          <section class="section" aria-labelledby="state-title" style="gap:12px">
+            <h2 class="section-title" id="state-title">Estado de lectura</h2>
+            <div class="states" id="states"></div>
+          </section>
+
+          <section class="panel" aria-labelledby="kindle-title">
+            <div class="panel-head">
+              <h2 class="card-title" id="kindle-title">Envío al Kindle</h2>
+              <span class="pill" id="kindle-pill"></span>
+            </div>
+            <ol class="timeline" id="timeline"></ol>
+            <div class="btn-row">
+              <button class="btn btn-outline" type="button" id="resend"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg> Reenviar al Kindle</button>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="notes-title">
+            <div class="panel-head">
+              <h2 class="card-title" id="notes-title">Notas de lectura</h2>
+              <span class="pill pill-warn">Opcional · importación por definir</span>
+            </div>
+            <p class="subtitle" style="font-size:14px">Los highlights del Kindle se guardarán como Markdown con esta forma:</p>
+            <pre class="md-preview" id="md"></pre>
+            <div class="btn-row">
+              <button class="btn btn-outline" type="button" id="copy-md">Copiar Markdown</button>
+              <button class="btn btn-soft" type="button" aria-disabled="true" disabled>Guardar en Obsidian</button>
+              <button class="btn btn-sky" type="button" aria-disabled="true" disabled>Commit a GitHub</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

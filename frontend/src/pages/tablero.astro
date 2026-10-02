@@ -1,0 +1,100 @@
+---
+import Base from '../layouts/Base.astro';
+import Brand from '../components/Brand.astro';
+import Icon from '../components/Icon.astro';
+import { btn, NAV, PAGE_TITLE, SUBTITLE, SECTION_TITLE, CARD_TITLE, STATES_ROW, ICON_SM } from '../scripts/ui';
+const navItem = 'flex items-center gap-3 min-h-11 px-3 rounded-md no-underline font-medium';
+const hint = 'flex items-center gap-2.5 px-3.5 bg-reading-bg text-reading-ink text-[13px] font-medium';
+---
+<Base title="Tablero de lectura — Readflow">
+  <div class="grid grid-cols-[248px_minmax(0,1fr)] min-h-screen bg-[linear-gradient(to_right,var(--color-side)_248px,var(--color-canvas)_248px)] max-md:grid-cols-1 max-md:bg-none">
+    <aside class="bg-side border-r border-line-soft px-[18px] py-7 flex flex-col gap-7 sticky top-0 h-screen max-md:hidden">
+      <Brand href="/tablero" class="px-2" />
+      <nav class="flex flex-col gap-1" aria-label="Principal">
+        {NAV.map((n) => n.href ? (
+          <a class={`${navItem} bg-surface text-ink font-semibold hover:text-ink`} href={n.href} aria-current="page"><Icon name={n.icon} /> {n.label}</a>
+        ) : (
+          <span class={`${navItem} text-muted-2 cursor-default`}>
+            <Icon name={n.icon} /> {n.label}
+            <span class="ml-auto text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/70 text-muted">Pronto</span>
+          </span>
+        ))}
+      </nav>
+      <div class="mt-auto bg-reading-bg rounded-2xl p-4 flex flex-col gap-1.5 text-[#2F5A47] text-[13px]">
+        <strong class="flex items-center gap-2 text-reading-ink text-sm"><span class="size-2 rounded-full bg-[#3E9B70]"></span>Kindle conectado</strong>
+        <span>[tu-correo]@kindle.com</span>
+        <small class="text-xs text-[#3D5F50]" id="kindle-last"></small>
+      </div>
+    </aside>
+
+    <main class="px-10 pt-8 pb-14 flex flex-col gap-8 min-w-0 max-md:px-5 max-md:pt-5 max-md:pb-[120px] max-md:gap-[22px]">
+      <header class="flex flex-wrap items-end justify-between gap-4 max-md:items-center max-md:flex-nowrap">
+        <div class="flex flex-col gap-1.5">
+          <h1 class={PAGE_TITLE}>Tablero<span class="max-md:hidden"> de lectura</span></h1>
+          <p class={`${SUBTITLE} text-[15px] max-md:text-[13px]`} id="summary"></p>
+        </div>
+        <div class="flex items-center gap-3">
+          <label id="search-box" class="flex items-center gap-2 h-11 w-[260px] px-3.5 bg-surface border border-line-soft rounded-md focus-within:border-toread-dot focus-within:ring-3 focus-within:ring-toread-bg max-md:hidden max-md:data-open:flex max-md:data-open:w-full">
+            <span class="sr-only">Buscar en la biblioteca</span>
+            <Icon name="search" class={`${ICON_SM} text-muted-2`} />
+            <input id="search" type="search" placeholder="Título o autor" class="border-0 outline-0 bg-transparent text-sm flex-1 min-w-0" />
+          </label>
+          <button class={`${btn('outline', 'icon')} md:hidden`} type="button" id="search-toggle" aria-label="Buscar"><Icon name="search" /></button>
+          <a class={`${btn('primary')} max-md:hidden`} href="/subir"><Icon name="upload" class={ICON_SM} /> Subir EPUB</a>
+        </div>
+      </header>
+
+      <section class="flex flex-col gap-3.5" aria-labelledby="now-title">
+        <h2 class={SECTION_TITLE} id="now-title">Leyendo ahora</h2>
+        <div class="max-md:flex max-md:gap-3 max-md:overflow-x-auto max-md:-mx-5 max-md:px-5 max-md:[scrollbar-width:none]">
+          <div class="grid grid-cols-2 gap-4 max-[1100px]:grid-cols-1 max-md:contents" id="now"></div>
+        </div>
+      </section>
+
+      <section class="flex flex-col gap-3.5" aria-labelledby="board-title">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class={SECTION_TITLE} id="board-title">Por estado</h2>
+          <p class={`${hint} py-2 rounded-full max-md:hidden`}><Icon name="mail" /> Arrastra un libro a Reading y se envía solo a tu Kindle</p>
+        </div>
+        <div class="grid grid-cols-[repeat(6,minmax(160px,1fr))] gap-3.5 items-start overflow-x-auto pb-1.5 max-md:hidden" id="board"></div>
+
+        <div class="md:hidden flex gap-2 overflow-x-auto -mx-5 px-5 pb-0.5 [scrollbar-width:none]" id="tabs" role="tablist" aria-label="Estados de lectura"></div>
+        <div class="md:hidden p-2.5 rounded-lg bg-s-bg flex flex-col gap-2" id="mlist" role="tabpanel"></div>
+        <p class={`${hint} py-2.5 rounded-[14px] md:hidden`}>Mantén presionado un libro para cambiarlo de estado. A Reading se envía solo al Kindle.</p>
+      </section>
+    </main>
+  </div>
+
+  <a class="fixed right-5 bottom-[calc(92px+env(safe-area-inset-bottom,0px))] size-14 rounded-[18px] bg-ink text-white hover:text-white grid place-items-center shadow-[0_8px_20px_rgba(43,40,64,.2)] z-20 md:hidden" href="/subir" aria-label="Subir EPUB">
+    <Icon name="plus" class="size-[22px]" />
+  </a>
+
+  <nav class="fixed inset-x-0 bottom-0 z-20 bg-surface border-t border-line grid grid-cols-4 pt-1.5 pb-[calc(8px+env(safe-area-inset-bottom,0px))] md:hidden" aria-label="Principal">
+    {NAV.map((n) => n.href ? (
+      <a class="flex flex-col items-center justify-center gap-1 min-h-14 no-underline text-toread-ink hover:text-toread-ink text-[11px] font-bold" href={n.href} aria-current="page">
+        <span class="px-4 py-1 rounded-full flex bg-toread-bg"><Icon name={n.icon} /></span>{n.label}
+      </a>
+    ) : (
+      <span class="flex flex-col items-center justify-center gap-1 min-h-14 text-muted text-[11px] font-semibold opacity-60">
+        <span class="px-4 py-1 rounded-full flex"><Icon name={n.icon} /></span>{n.label}
+      </span>
+    ))}
+  </nav>
+
+  <dialog class="mx-auto mt-auto mb-0 w-full max-w-[520px] rounded-t-3xl bg-surface text-ink p-0 border-0 backdrop:bg-ink/35" id="move-sheet" aria-labelledby="sheet-title">
+    <div class="px-5 pt-5 pb-[calc(24px+env(safe-area-inset-bottom,0px))] flex flex-col gap-3.5">
+      <span class="w-10 h-1 rounded-[4px] bg-line-strong mx-auto mb-1" aria-hidden="true"></span>
+      <div class="flex justify-between items-baseline gap-3">
+        <h2 class={CARD_TITLE} id="sheet-title"></h2>
+        <button class={btn('ghost')} type="button" id="sheet-close">Cerrar</button>
+      </div>
+      <p class={`${SUBTITLE} text-sm`}>Mover a:</p>
+      <div class={STATES_ROW} id="sheet-states"></div>
+    </div>
+  </dialog>
+</Base>
+
+<script>
+  import { initBoard } from '../scripts/board';
+  initBoard();
+</script>

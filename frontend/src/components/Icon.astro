@@ -1,0 +1,6 @@
+---
+import { icon, ICON, type IconName } from '../scripts/ui';
+interface Props { name: IconName; class?: string }
+const { name, class: cls = ICON } = Astro.props;
+---
+<Fragment set:html={icon(name, cls)} />

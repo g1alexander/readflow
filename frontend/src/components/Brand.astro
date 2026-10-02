@@ -1,0 +1,10 @@
+---
+import Icon from './Icon.astro';
+interface Props { href?: string; class?: string }
+const { href, class: cls = '' } = Astro.props;
+const Tag = href ? 'a' : 'span';
+---
+<Tag href={href} class:list={['flex items-center gap-2.5 no-underline text-ink hover:text-ink', cls]}>
+  <span class="size-9 rounded-sm bg-brand grid place-items-center text-ink"><Icon name="doc" class="size-5" /></span>
+  <span class="font-display font-bold text-2xl tracking-[-0.02em]">Readflow</span>
+</Tag>

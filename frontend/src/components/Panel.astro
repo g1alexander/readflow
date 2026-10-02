@@ -1,0 +1,12 @@
+---
+import { CARD_TITLE } from '../scripts/ui';
+interface Props { title?: string; titleId: string; id?: string; hidden?: boolean }
+const { title, titleId, id, hidden } = Astro.props;
+---
+<section id={id} hidden={hidden} aria-labelledby={titleId} class="bg-surface border border-line rounded-[20px] px-6 py-[22px] flex flex-col gap-4 max-md:p-4 max-md:rounded-lg">
+  <div class="flex justify-between items-center gap-3 flex-wrap">
+    <h2 class={CARD_TITLE} id={titleId}>{title}</h2>
+    <slot name="head" />
+  </div>
+  <slot />
+</section>

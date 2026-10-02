@@ -1,0 +1,46 @@
+---
+import Base from '../layouts/Base.astro';
+import CenteredPage from '../components/CenteredPage.astro';
+import BackLink from '../components/BackLink.astro';
+import Panel from '../components/Panel.astro';
+import Icon from '../components/Icon.astro';
+import { btn, PAGE_TITLE, SUBTITLE } from '../scripts/ui';
+---
+<Base title="Subir libros — Readflow">
+  <CenteredPage>
+    <BackLink />
+
+    <div class="flex flex-col gap-1.5">
+      <h1 class={PAGE_TITLE}>Subir libros</h1>
+      <p class={SUBTITLE}>Readflow extrae el título, el autor y la portada de cada EPUB después de subirlo.</p>
+    </div>
+
+    <div class="bg-surface border-2 border-dashed border-[#BDB0EC] rounded-xl px-6 py-11 flex flex-col items-center gap-3 text-center transition-colors data-over:bg-toread-bg data-over:border-toread-ink max-md:px-4 max-md:py-[26px] max-md:rounded-[20px]" id="dropzone">
+      <div class="size-16 rounded-[20px] bg-toread-bg grid place-items-center text-toread-ink max-md:size-[52px] max-md:rounded-2xl">
+        <Icon name="tray" class="size-7" />
+      </div>
+      <p class="font-display font-bold text-xl max-md:text-base max-md:font-body">
+        <span class="max-md:hidden">Arrastra aquí tus archivos EPUB</span><span class="md:hidden">Elige tus archivos EPUB</span>
+      </p>
+      <p class="text-sm text-muted">Uno o varios a la vez</p>
+      <label class={btn('soft')} for="files">Elegir archivos</label>
+      <input class="sr-only" id="files" type="file" accept=".epub,application/epub+zip" multiple />
+    </div>
+
+    <Panel id="queue" titleId="queue-title" hidden>
+      <span slot="head" class={`${SUBTITLE} text-[13px]`}>Revisa el estado inicial de cada libro.</span>
+      <div id="queue-list"></div>
+      <p class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px] bg-reading-bg text-reading-ink text-[13px] font-medium" id="reading-hint" hidden><Icon name="mail" /> Los libros que guardes en Reading se enviarán a tu Kindle al instante.</p>
+    </Panel>
+
+    <div class="flex flex-wrap justify-end gap-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-20 max-md:px-5 max-md:pt-3.5 max-md:pb-[calc(18px+env(safe-area-inset-bottom,0px))] max-md:bg-canvas max-md:border-t max-md:border-line">
+      <a class={`${btn('ghost')} max-md:hidden`} href="/tablero">Cancelar</a>
+      <button class={`${btn('primary')} max-md:flex-1 max-md:min-h-[52px] max-md:text-base`} type="button" id="save" disabled>Agregar a la biblioteca</button>
+    </div>
+  </CenteredPage>
+</Base>
+
+<script>
+  import { initUpload } from '../scripts/upload';
+  initUpload();
+</script>
