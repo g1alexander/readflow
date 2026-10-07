@@ -7,7 +7,7 @@ Astro 7 (SSG) + Tailwind 4 + TypeScript. Port de `docs/mockup/` (ALE-5).
 | Comando | Acción |
 | :-- | :-- |
 | `pnpm install` | Instala dependencias |
-| `pnpm dev` | Servidor local en `localhost:4321` |
+| `pnpm dev` | Servidor local en `localhost:8080` |
 | `pnpm build` | Build estático en `./dist/` |
 | `pnpm preview` | Sirve el build |
 

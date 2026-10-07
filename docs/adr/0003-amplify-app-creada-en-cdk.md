@@ -22,3 +22,7 @@ CDK crea la app de Amplify (`@aws-cdk/aws-amplify-alpha`) conectada a GitHub y l
 - Toda la configuración del frontend es reproducible con `cdk deploy`.
 - El construct de Amplify es alpha: su API puede cambiar entre versiones.
 - CDK necesita un token de GitHub (en Secrets Manager) para conectar el repo.
+
+## Notas
+
+- 2026-10-06 (ALE-7): la conexión usa la GitHub App de Amplify mediante `AccessToken`, no `OauthToken`, que es el flujo legacy de webhook + deploy key. `GitHubSourceCodeProvider` del alpha solo emite `oauthToken`, así que existe un provider propio: `infrastructure/lib/constructs/github-app-source-code-provider.ts`. El secreto `readflow/github-token` guarda un PAT classic con scope `admin:repo_hook`, que solo se usa al crear o actualizar la app.
