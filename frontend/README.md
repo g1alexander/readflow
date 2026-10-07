@@ -1,43 +1,36 @@
-# Astro Starter Kit: Minimal
+# Readflow — frontend
 
-```sh
-pnpm create astro@latest -- --template minimal
-```
+Astro 7 (SSG) + Tailwind 4 + TypeScript. Port de `docs/mockup/` (ALE-5).
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Comandos
 
-## 🚀 Project Structure
+| Comando | Acción |
+| :-- | :-- |
+| `pnpm install` | Instala dependencias |
+| `pnpm dev` | Servidor local en `localhost:4321` |
+| `pnpm build` | Build estático en `./dist/` |
+| `pnpm preview` | Sirve el build |
 
-Inside of your Astro project, you'll see the following folders and files:
+## Rutas
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+| Ruta | Página |
+| :-- | :-- |
+| `/` | Login |
+| `/tablero` | Tablero con los 6 estados |
+| `/subir` | Subida de EPUB |
+| `/libro?id=…` | Detalle del libro |
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Estructura
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+- `src/styles/global.css`: tokens en `@theme` y variables del patrón `data-state`.
+- `src/layouts/Base.astro`, `src/components/`: layout y componentes.
+- `src/scripts/`: `store.ts` (estados, datos, Kindle simulado), `ui.ts` (iconos, clases, toast), y un script por página (`login`, `board`, `upload`, `detail`).
 
-Any static assets, like images, can be placed in the `public/` directory.
+## Estado
 
-## 🧞 Commands
+Datos falsos en `localStorage` (`readflow:books:v1`). Sin backend todavía. Puntos de integración:
 
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+- `login.ts` → Cognito.
+- `store.ts` load/save/addBooks → API.
+- `upload.ts` → presigned URL de S3. La metadata del EPUB la extrae la Lambda tras la subida, no el navegador.
+- `sendToKindle` → `POST /books/:id/send-to-kindle`.

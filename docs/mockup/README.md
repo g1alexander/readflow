@@ -1,4 +1,6 @@
-# Readflow — front en HTML, CSS y JS
+# Readflow — mockup en HTML, CSS y JS
+
+> Referencia histórica. El front real está en `frontend/` (Astro, ver `frontend/README.md`). Ahí no se usa JSZip: la metadata del EPUB la extrae la Lambda tras subir a S3.
 
 Abre `index.html` en el navegador. No necesita instalación ni servidor.
 
