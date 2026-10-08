@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Página no encontrada — Readflow</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%23C9BCF2%22/><path d=%22M10 24V9h8l4 4v11z%22 fill=%22none%22 stroke=%22%232B2840%22 stroke-width=%222%22/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=Figtree:wght@400;600;700&display=swap">
+  <style>
+    /* Estilos incluidos aquí para que la página funcione en cualquier ruta del servidor */
+    :root {
+      --bg: #F7F5FB; --ink: #2B2840; --ink-2: #4A4660; --muted: #5D5873; --line: #DCD6EA;
+      --toread-bg: #ECE7FA; --toread-ink: #433683; --toread-dot: #9686DC;
+      --upnext-bg: #E0EDFA; --reading-bg: #DDF3E8; --onhold-bg: #FBF1CF; --finished-bg: #FCE4D8;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; min-height: 100dvh;
+      background: var(--bg); color: var(--ink);
+      font-family: 'Figtree', system-ui, sans-serif; font-size: 16px; line-height: 1.45;
+      display: flex; flex-direction: column;
+    }
+    a { color: var(--toread-ink); }
+    :focus-visible { outline: 3px solid var(--toread-dot); outline-offset: 2px; border-radius: 6px; }
+
+    .top { padding: 28px 32px; }
+    .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+    .brand-mark { width: 36px; height: 36px; border-radius: 10px; background: #C9BCF2; display: grid; place-items: center; }
+    .brand-name { font-family: 'Bricolage Grotesque', 'Figtree', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.02em; }
+
+    main {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 32px; padding: 24px 24px 72px; text-align: center;
+    }
+
+    /* Estantería con un hueco donde falta el libro */
+    .shelf { position: relative; display: flex; align-items: flex-end; gap: 10px; height: 200px; padding: 0 18px; }
+    .shelf::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: -10px; height: 10px;
+      border-radius: 6px; background: #E3DDF1;
+    }
+    .spine { border-radius: 7px; border: 2px solid; }
+    .s1 { width: 54px; height: 150px; background: var(--toread-bg); border-color: #D8CFF4; }
+    .s2 { width: 64px; height: 182px; background: var(--upnext-bg); border-color: #C6DCF3; }
+    .gap {
+      width: 76px; height: 200px; border-radius: 7px; border: 2px dashed var(--line);
+      display: grid; place-items: center;
+      font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 22px; color: var(--toread-dot);
+    }
+    .s3 { width: 58px; height: 166px; background: var(--onhold-bg); border-color: #F2E1A6; }
+    .s4 {
+      width: 50px; height: 138px; background: var(--finished-bg); border-color: #F6CDB8;
+      transform: rotate(-8deg); transform-origin: bottom right; margin-left: -4px;
+    }
+
+    .copy { display: flex; flex-direction: column; gap: 12px; max-width: 460px; }
+    .code { font-size: 14px; font-weight: 700; color: var(--toread-ink); background: var(--toread-bg);
+      align-self: center; padding: 4px 12px; border-radius: 999px; }
+    h1 {
+      margin: 0; font-family: 'Bricolage Grotesque', 'Figtree', sans-serif; font-weight: 700;
+      font-size: 44px; line-height: 1.05; letter-spacing: -0.025em;
+    }
+    p { margin: 0; color: var(--muted); font-size: 16px; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 48px; padding: 0 20px; border-radius: 12px;
+      font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid transparent;
+    }
+    .btn-primary { background: var(--ink); color: #fff; }
+    .btn-primary:hover { background: #3b3756; color: #fff; }
+    .btn-outline { background: #fff; color: var(--ink); border-color: var(--line); }
+    .btn-outline:hover { border-color: #c3bbd8; color: var(--ink); }
+
+    @media (max-width: 600px) {
+      .top { padding: 20px; }
+      .shelf { height: 150px; gap: 8px; padding: 0 12px; }
+      .s1 { width: 40px; height: 112px; } .s2 { width: 48px; height: 136px; }
+      .gap { width: 58px; height: 150px; font-size: 18px; }
+      .s3 { width: 44px; height: 124px; } .s4 { width: 38px; height: 104px; }
+      h1 { font-size: 32px; }
+      .actions { width: 100%; flex-direction: column; }
+      .btn { width: 100%; min-height: 52px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/tablero.html">
+      <span class="brand-mark">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B2840" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 13h8M8 17h5"/></svg>
+      </span>
+      <span class="brand-name">Readflow</span>
+    </a>
+  </header>
+
+  <main>
+    <div class="shelf" aria-hidden="true">
+      <span class="spine s1"></span>
+      <span class="spine s2"></span>
+      <span class="gap">?</span>
+      <span class="spine s3"></span>
+      <span class="spine s4"></span>
+    </div>
+
+    <div class="copy">
+      <span class="code">Error 404</span>
+      <h1>Esta página no está en tu biblioteca</h1>
+      <p>Puede que el enlace esté mal escrito o que el libro se haya eliminado. Tus libros siguen en el tablero.</p>
+    </div>
+
+    <div class="actions">
+      <a class="btn btn-primary" href="/tablero.html">Ir al tablero</a>
+    </div>
+  </main>
+</body>
+</html>

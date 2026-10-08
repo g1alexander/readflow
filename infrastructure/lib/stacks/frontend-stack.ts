@@ -54,6 +54,13 @@ export class FrontendStack extends Stack {
           },
         ],
       }),
+      customRules: [
+        new amplify.CustomRule({
+          source: '/<*>',
+          target: '/404.html',
+          status: amplify.RedirectStatus.NOT_FOUND,
+        }),
+      ],
     });
 
     const main = app.addBranch(branch, {
