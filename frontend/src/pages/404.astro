@@ -1,0 +1,33 @@
+---
+import Base from '../layouts/Base.astro';
+import Brand from '../components/Brand.astro';
+import { btn, DISPLAY, SUBTITLE } from '../scripts/ui';
+const spine = 'rounded-[7px] border-2';
+---
+<Base title="Página no encontrada — Readflow">
+  <div class="flex flex-col min-h-dvh">
+    <header class="px-8 py-7 max-md:p-5">
+      <Brand href="/tablero" class="w-fit" />
+    </header>
+
+    <main class="flex-1 flex flex-col items-center justify-center gap-8 px-6 pt-6 pb-[72px] text-center">
+      <div class="relative flex items-end gap-2.5 h-[200px] px-[18px] after:content-[''] after:absolute after:inset-x-0 after:-bottom-2.5 after:h-2.5 after:rounded-[6px] after:bg-line-soft max-md:h-[150px] max-md:gap-2 max-md:px-3" aria-hidden="true">
+        <span class={`${spine} w-[54px] h-[150px] bg-toread-bg border-[#D8CFF4] max-md:w-10 max-md:h-[112px]`}></span>
+        <span class={`${spine} w-16 h-[182px] bg-upnext-bg border-[#C6DCF3] max-md:w-12 max-md:h-[136px]`}></span>
+        <span class={`${spine} border-dashed border-line-strong w-[76px] h-[200px] grid place-items-center font-display font-bold text-[22px] text-toread-dot max-md:w-[58px] max-md:h-[150px] max-md:text-lg`}>?</span>
+        <span class={`${spine} w-[58px] h-[166px] bg-onhold-bg border-[#F2E1A6] max-md:w-11 max-md:h-[124px]`}></span>
+        <span class={`${spine} w-[50px] h-[138px] bg-finished-bg border-[#F6CDB8] -rotate-8 origin-bottom-right -ml-1 max-md:w-[38px] max-md:h-[104px]`}></span>
+      </div>
+
+      <div class="flex flex-col gap-3 max-w-[460px]">
+        <span class="self-center text-sm font-bold text-toread-ink bg-toread-bg px-3 py-1 rounded-full">Error 404</span>
+        <h1 class={`${DISPLAY} leading-[1.05] text-[44px] max-md:text-[32px]`}>Esta página no está en tu biblioteca</h1>
+        <p class={`${SUBTITLE} text-base`}>Puede que el enlace esté mal escrito o que el libro se haya eliminado. Tus libros siguen en el tablero.</p>
+      </div>
+
+      <div class="flex flex-wrap justify-center gap-3 max-md:w-full max-md:flex-col">
+        <a class={`${btn('primary')} min-h-12 px-5 text-[15px] max-md:w-full max-md:min-h-[52px]`} href="/tablero">Ir al tablero</a>
+      </div>
+    </main>
+  </div>
+</Base>
