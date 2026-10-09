@@ -31,7 +31,7 @@
 | Cognito | Login (User Pool). Emite el JWT que valida la API |
 | API Gateway (HTTP API) | Puerta de entrada de la API, con JWT authorizer de Cognito |
 | Lambda | Lógica de negocio: URL prefirmada, CRUD de libros y estados, extracción de metadata, envío al Kindle |
-| DynamoDB | Tabla de libros: metadata y estado de lectura. Streams habilitado |
+| DynamoDB | Tabla `readflow` (single-table): libros, autores, historial y ajustes. Streams habilitado. Ver [modelo de datos](./specs/modelo-de-datos.md) |
 | S3 | Almacenamiento de los EPUB |
 | SES | Envío del email con el EPUB adjunto al Kindle |
 | CloudWatch | Logs y métricas |
