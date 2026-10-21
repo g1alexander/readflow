@@ -5,8 +5,13 @@ import type { Construct } from 'constructs';
 import { config } from '../config.js';
 import { GitHubAppSourceCodeProvider } from '../constructs/github-app-source-code-provider.js';
 
+export interface FrontendStackProps extends StackProps {
+  userPoolId: string;
+  userPoolClientId: string;
+}
+
 export class FrontendStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props: FrontendStackProps) {
     super(scope, id, props);
 
     const { appRoot, branch, nodeVersion, pnpmVersion } = config.frontend;
@@ -22,6 +27,8 @@ export class FrontendStack extends Stack {
       environmentVariables: {
         AMPLIFY_MONOREPO_APP_ROOT: appRoot,
         AMPLIFY_DIFF_DEPLOY: 'true',
+        PUBLIC_COGNITO_USER_POOL_ID: props.userPoolId,
+        PUBLIC_COGNITO_USER_POOL_CLIENT_ID: props.userPoolClientId,
       },
       buildSpec: BuildSpec.fromObjectToYaml({
         version: 1,

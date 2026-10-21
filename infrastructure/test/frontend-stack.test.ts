@@ -10,6 +10,8 @@ describe('FrontendStack', () => {
     const app = new App();
     const stack = new FrontendStack(app, 'TestFrontend', {
       env: { account: '123456789012', region: 'us-east-1' },
+      userPoolId: 'us-east-1_TestPool',
+      userPoolClientId: 'test-client-id',
     });
     template = Template.fromStack(stack);
   });
@@ -28,6 +30,15 @@ describe('FrontendStack', () => {
       EnvironmentVariables: Match.arrayWith([
         { Name: 'AMPLIFY_MONOREPO_APP_ROOT', Value: 'frontend' },
         { Name: 'AMPLIFY_DIFF_DEPLOY', Value: 'true' },
+      ]),
+    });
+  });
+
+  it('injects the Cognito ids as public build variables', () => {
+    template.hasResourceProperties('AWS::Amplify::App', {
+      EnvironmentVariables: Match.arrayWith([
+        { Name: 'PUBLIC_COGNITO_USER_POOL_ID', Value: 'us-east-1_TestPool' },
+        { Name: 'PUBLIC_COGNITO_USER_POOL_CLIENT_ID', Value: 'test-client-id' },
       ]),
     });
   });

@@ -13,6 +13,7 @@ const ICON_PATHS = {
   clock: [2, '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'],
   chev: [2, '<path d="m9 18 6-6-6-6"/>'],
   back: [2, '<path d="M15 18 9 12l6-6"/>'],
+  logout: [2, '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>'],
 } as const;
 
 export type IconName = keyof typeof ICON_PATHS;
