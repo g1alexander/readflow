@@ -1,36 +1,12 @@
-# Readflow — frontend
+# frontend
 
-Astro 7 (SSG) + Tailwind 4 + TypeScript. Port de `docs/mockup/` (ALE-5).
+Astro 7 (SSG) + Tailwind 4 + TypeScript.
 
-## Comandos
+```sh
+pnpm install
+pnpm dev      # localhost:8080
+pnpm build    # ./dist
+```
 
-| Comando | Acción |
-| :-- | :-- |
-| `pnpm install` | Instala dependencias |
-| `pnpm dev` | Servidor local en `localhost:8080` |
-| `pnpm build` | Build estático en `./dist/` |
-| `pnpm preview` | Sirve el build |
-
-## Rutas
-
-| Ruta | Página |
-| :-- | :-- |
-| `/` | Login |
-| `/tablero` | Tablero con los 6 estados |
-| `/subir` | Subida de EPUB |
-| `/libro?id=…` | Detalle del libro |
-
-## Estructura
-
-- `src/styles/global.css`: tokens en `@theme` y variables del patrón `data-state`.
-- `src/layouts/Base.astro`, `src/components/`: layout y componentes.
-- `src/scripts/`: `store.ts` (estados, datos, Kindle simulado), `ui.ts` (iconos, clases, toast), y un script por página (`login`, `board`, `upload`, `detail`).
-
-## Estado
-
-Datos falsos en `localStorage` (`readflow:books:v1`). Sin backend todavía. Puntos de integración:
-
-- `login.ts` → Cognito.
-- `store.ts` load/save/addBooks → API.
-- `upload.ts` → presigned URL de S3. La metadata del EPUB la extrae la Lambda tras la subida, no el navegador.
-- `sendToKindle` → `POST /books/:id/send-to-kindle`.
+- Auth: Cognito email + contraseña (SRP), [ADR 0006](../docs/adr/0006-login-email-password-srp-sin-hosted-ui.md). Local: copiar `.env.example` a `.env.local`.
+- Datos: falsos en `localStorage`, sin backend aún.

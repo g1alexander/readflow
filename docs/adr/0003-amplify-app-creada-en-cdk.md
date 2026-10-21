@@ -26,3 +26,4 @@ CDK crea la app de Amplify (`@aws-cdk/aws-amplify-alpha`) conectada a GitHub y l
 ## Notas
 
 - 2026-10-06 (ALE-7): la conexión usa la GitHub App de Amplify mediante `AccessToken`, no `OauthToken`, que es el flujo legacy de webhook + deploy key. `GitHubSourceCodeProvider` del alpha solo emite `oauthToken`, así que existe un provider propio: `infrastructure/lib/constructs/github-app-source-code-provider.ts`. El secreto `readflow/github-token` guarda un PAT classic con scope `admin:repo_hook`, que solo se usa al crear o actualizar la app.
+- 2026-10-21 (ALE-13): las primeras variables inyectadas son `PUBLIC_COGNITO_USER_POOL_ID` y `PUBLIC_COGNITO_USER_POOL_CLIENT_ID`, que llegan por props desde `ReadflowAuth` ([ADR 0006](0006-login-email-password-srp-sin-hosted-ui.md)). Las variables se leen en el build: cambiarlas exige un build nuevo.
