@@ -1,6 +1,6 @@
 # readflow
 
-Webapp serverless personal de biblioteca y lectura.
+Webapp serverless personal de biblioteca y lectura
 
 - `frontend/`: Astro.
 - `infrastructure/`: CDK v2 (TypeScript).
