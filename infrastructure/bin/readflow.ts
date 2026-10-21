@@ -1,5 +1,6 @@
 import { App } from 'aws-cdk-lib';
 import { config } from '../lib/config.js';
+import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { FrontendStack } from '../lib/stacks/frontend-stack.js';
 
 const app = new App();
@@ -9,4 +10,10 @@ const env = {
   region: config.region,
 };
 
-new FrontendStack(app, 'ReadflowFrontend', { env });
+const auth = new AuthStack(app, 'ReadflowAuth', { env });
+
+new FrontendStack(app, 'ReadflowFrontend', {
+  env,
+  userPoolId: auth.userPool.userPoolId,
+  userPoolClientId: auth.userPoolClient.userPoolClientId,
+});
