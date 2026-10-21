@@ -6,7 +6,7 @@ import { btn, NAV, PAGE_TITLE, SUBTITLE, SECTION_TITLE, CARD_TITLE, STATES_ROW, 
 const navItem = 'flex items-center gap-3 min-h-11 px-3 rounded-md no-underline font-medium';
 const hint = 'flex items-center gap-2.5 px-3.5 bg-reading-bg text-reading-ink text-[13px] font-medium';
 ---
-<Base title="Tablero de lectura — Readflow">
+<Base title="Tablero de lectura — Readflow" auth="private">
   <div class="grid grid-cols-[248px_minmax(0,1fr)] min-h-screen bg-[linear-gradient(to_right,var(--color-side)_248px,var(--color-canvas)_248px)] max-md:grid-cols-1 max-md:bg-none">
     <aside class="bg-side border-r border-line-soft px-[18px] py-7 flex flex-col gap-7 sticky top-0 h-screen max-md:hidden">
       <Brand href="/tablero" class="px-2" />
@@ -25,6 +25,7 @@ const hint = 'flex items-center gap-2.5 px-3.5 bg-reading-bg text-reading-ink te
         <span>[tu-correo]@kindle.com</span>
         <small class="text-xs text-[#3D5F50]" id="kindle-last"></small>
       </div>
+      <button class={`${btn('ghost')} justify-start`} type="button" data-logout><Icon name="logout" /> Cerrar sesión</button>
     </aside>
 
     <main class="px-10 pt-8 pb-14 flex flex-col gap-8 min-w-0 max-md:px-5 max-md:pt-5 max-md:pb-[120px] max-md:gap-[22px]">
@@ -41,6 +42,7 @@ const hint = 'flex items-center gap-2.5 px-3.5 bg-reading-bg text-reading-ink te
           </label>
           <button class={`${btn('outline', 'icon')} md:hidden`} type="button" id="search-toggle" aria-label="Buscar"><Icon name="search" /></button>
           <a class={`${btn('primary')} max-md:hidden`} href="/subir"><Icon name="upload" class={ICON_SM} /> Subir EPUB</a>
+          <button class={`${btn('outline', 'icon')} md:hidden`} type="button" data-logout aria-label="Cerrar sesión"><Icon name="logout" /></button>
         </div>
       </header>
 

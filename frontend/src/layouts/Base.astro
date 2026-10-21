@@ -1,10 +1,10 @@
 ---
 import '../styles/global.css';
-interface Props { title: string }
-const { title } = Astro.props;
+interface Props { title: string; auth?: 'guest' | 'private' }
+const { title, auth } = Astro.props;
 ---
 <!doctype html>
-<html lang="es">
+<html lang="es" data-auth={auth}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -18,3 +18,8 @@ const { title } = Astro.props;
     <slot />
   </body>
 </html>
+
+<script>
+  import { guard } from '../scripts/auth';
+  guard();
+</script>

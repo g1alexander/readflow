@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+html[data-auth]:not([data-auth-ready]) body {
+  visibility: hidden;
+}
+
 @theme {
   --color-canvas: #F7F5FB;
   --color-surface: #FFFFFF;
