@@ -4,6 +4,7 @@ CDK v2 en TypeScript, `us-east-1`.
 
 | Stack | Crea |
 | -- | -- |
+| `ReadflowStorage` | Tabla DynamoDB `readflow` + bucket S3 de EPUB `g1-readflowstorage-epub` |
 | `ReadflowAuth` | Cognito User Pool + app client SRP |
 | `ReadflowFrontend` | Amplify Hosting, rama `main` |
 
@@ -18,6 +19,8 @@ pnpm diff
 
 1. Instalar la Amplify GitHub App en el repo.
 2. PAT classic (`admin:repo_hook`) en Secrets Manager como `readflow/github-token`.
-3. `pnpm exec cdk bootstrap` y `pnpm deploy`.
+3. `pnpm exec cdk bootstrap` y `pnpm deploy --all`.
 
 `ReadflowFrontend` depende de `ReadflowAuth`: destruir primero `ReadflowFrontend`.
+
+Los orígenes CORS del bucket salen del context `corsOrigins` de `cdk.json`. Si cambia el dominio del frontend, se actualiza ahí y se despliega `ReadflowStorage`.
