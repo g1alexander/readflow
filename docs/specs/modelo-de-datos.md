@@ -11,7 +11,7 @@ Contrato de datos que comparten la API de libros, la Lambda de metadata y la Lam
 | Billing | On-demand (`PAY_PER_REQUEST`) |
 | PITR | Activado |
 | Stream | `NEW_AND_OLD_IMAGES` |
-| Removal policy | `RETAIN` (ADR 0004) |
+| Removal policy | `DESTROY` (ADR 0004) |
 | GSI | Ninguno |
 | TTL | Ninguno |
 
@@ -161,6 +161,16 @@ Sin `INSERT`: un Book nace siempre con `ingest=pending`, así que el primer env�
 ## S3 — bucket de EPUB
 
 Bucket privado (Block Public Access completo). El navegador sube y descarga solo con presigned URLs que emite la API.
+
+| Propiedad | Valor |
+| --- | --- |
+| Nombre | `g1-readflowstorage-epub` (fijo, `lib/config.ts`); output `BucketName` del stack `ReadflowStorage` |
+| Cifrado | SSE-S3 |
+| Ownership | `BucketOwnerEnforced` (sin ACLs) |
+| TLS | Obligatorio (`enforceSSL`) |
+| CORS | `PUT` y `GET`, header `content-type`; orígenes desde el context `corsOrigins` de `infrastructure/cdk.json` |
+| Versioning / lifecycle | Ninguno |
+| Removal policy | `DESTROY` + `autoDeleteObjects` |
 
 ```
 users/<sub>/books/<ulid>/book.epub

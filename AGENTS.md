@@ -23,11 +23,12 @@ Webapp serverless personal de biblioteca y lectura (EPUB → Kindle). Monorepo: 
 
 ## Convenciones
 
-- Commits en `main`; rama solo si se pide.
+- Los commits los hace siempre el usuario: el agente nunca corre `git commit` ni `git push`. Se trabaja en `main`; rama solo si se pide.
 - Toda decisión de arquitectura → ADR en `docs/adr/`.
 - Contratos (API, eventos, modelo de datos) → `docs/specs/`. No inferirlos del código.
 - READMEs cortos: qué es, comandos, setup. El detalle va a ADRs/specs.
 - Solo `AGENTS.md`; no crear `CLAUDE.md`.
+- Ningún stack con terminationProtection; todos los recursos con `RemovalPolicy.DESTROY`, sin deletionProtection.
 
 ## Zonas prohibidas
 

@@ -6,6 +6,9 @@ export const config = {
     repository: 'readflow',
     tokenSecretName: 'readflow/github-token',
   },
+  storage: {
+    bucketName: 'g1-readflowstorage-epub',
+  },
   frontend: {
     appRoot: 'frontend',
     branch: 'main',

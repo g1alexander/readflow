@@ -10,6 +10,7 @@
     "synth": "cdk synth",
     "diff": "cdk diff",
     "deploy": "cdk deploy",
+    "destroy": "cdk destroy",
     "test": "vitest run"
   },
   "dependencies": {

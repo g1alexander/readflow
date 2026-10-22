@@ -12,7 +12,7 @@
 
 Cada dominio de `docs/architecture.drawio` tiene su propio stack en `lib/stacks/`: storage, auth, backend, frontend y pipeline.
 
-- `storage` (DynamoDB y S3) es el único stack con estado: `RemovalPolicy.RETAIN` y termination protection.
+- `storage` (DynamoDB y S3) es el único stack con estado. Como el resto, usa `RemovalPolicy.DESTROY` y no lleva termination protection ni deletion protection.
 - Las dependencias van en una sola dirección: storage → auth → backend → frontend. Los valores viajan por props tipadas en `bin/readflow.ts`, nunca con `Fn.importValue` a mano.
 - Las piezas reutilizables sin lógica de dominio van en `lib/constructs/`, y las constantes en `lib/config.ts`.
 
