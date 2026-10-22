@@ -5,6 +5,7 @@
     "exclude": ["README.md", "cdk*.json", "**/*.d.ts", "**/*.js", "tsconfig.json", "package.json", "pnpm-lock.yaml", "node_modules"]
   },
   "context": {
-    "corsOrigins": ["http://localhost:4321", "https://main.d1ml4jzgx84ua3.amplifyapp.com"]
+    "corsOrigins": ["http://localhost:4321", "https://main.d1ml4jzgx84ua3.amplifyapp.com"],
+    "mailDomain": "chess-mentor.com"
   }
 }

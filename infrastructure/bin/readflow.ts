@@ -2,6 +2,7 @@ import { App } from 'aws-cdk-lib';
 import { config } from '../lib/config.js';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { FrontendStack } from '../lib/stacks/frontend-stack.js';
+import { MailStack } from '../lib/stacks/mail-stack.js';
 import { StorageStack } from '../lib/stacks/storage-stack.js';
 
 const app = new App();
@@ -12,6 +13,8 @@ const env = {
 };
 
 new StorageStack(app, 'ReadflowStorage', { env });
+
+new MailStack(app, 'ReadflowMail', { env });
 
 const auth = new AuthStack(app, 'ReadflowAuth', { env });
 
