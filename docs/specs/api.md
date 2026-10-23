@@ -7,7 +7,7 @@ Contrato entre el front y la Lambda `api`. Decisiones y porqués: [ALE-14](https
 | Propiedad | Valor |
 | --- | --- |
 | Tipo | API Gateway HTTP API, stage `$default` |
-| Base URL | Output `ApiUrl` de `ReadflowServerless`; en el front, `PUBLIC_API_URL` (termina en `/`) |
+| Base URL | Output `ApiUrl` de `ReadflowServerless`; en el front, `PUBLIC_API_URL` (sin `/` final; las rutas se concatenan como `${PUBLIC_API_URL}/books`) |
 | Formato | JSON UTF-8 (`content-type: application/json`) |
 | Throttling | 10 rps, burst 20, para todo el stage. Exceso → `429` de API Gateway |
 

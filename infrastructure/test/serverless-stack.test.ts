@@ -95,7 +95,9 @@ describe('ServerlessStack', () => {
     });
   });
 
-  it('exports the API url', () => {
-    template.hasOutput('ApiUrl', {});
+  it('exports the API url without a trailing slash', () => {
+    template.hasOutput('ApiUrl', {
+      Value: { 'Fn::GetAtt': [Match.stringLikeRegexp('HttpApi'), 'ApiEndpoint'] },
+    });
   });
 });

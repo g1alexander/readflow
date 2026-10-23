@@ -12,7 +12,7 @@ describe('FrontendStack', () => {
       env: { account: '123456789012', region: 'us-east-1' },
       userPoolId: 'us-east-1_TestPool',
       userPoolClientId: 'test-client-id',
-      apiUrl: 'https://api.example.com/',
+      apiUrl: 'https://api.example.com',
     });
     template = Template.fromStack(stack);
   });
@@ -47,7 +47,7 @@ describe('FrontendStack', () => {
   it('injects the API url as a public build variable', () => {
     template.hasResourceProperties('AWS::Amplify::App', {
       EnvironmentVariables: Match.arrayWith([
-        { Name: 'PUBLIC_API_URL', Value: 'https://api.example.com/' },
+        { Name: 'PUBLIC_API_URL', Value: 'https://api.example.com' },
       ]),
     });
   });

@@ -24,13 +24,13 @@ El token expira en 1 h; si da `401`, recargar el front y copiarlo de nuevo. No p
 ## 3. Llamadas
 
 ```sh
-curl -i "${API_URL}books"
+curl -i "${API_URL}/books"
 ```
 
 Esperado: `401 {"message":"Unauthorized"}` (lo responde API Gateway; la Lambda no se invoca).
 
 ```sh
-curl -i -H "Authorization: Bearer $TOKEN" "${API_URL}books"
+curl -i -H "Authorization: Bearer $TOKEN" "${API_URL}/books"
 ```
 
 Esperado: `200 {"books": []}` sin libros cargados.

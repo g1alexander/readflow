@@ -55,7 +55,7 @@ export class ServerlessStack extends Stack {
       },
     });
 
-    const stage = api.addStage('DefaultStage', {
+    api.addStage('DefaultStage', {
       stageName: '$default',
       autoDeploy: true,
       throttle: { rateLimit: 10, burstLimit: 20 },
@@ -73,7 +73,7 @@ export class ServerlessStack extends Stack {
       authorizer,
     });
 
-    this.apiUrl = stage.url;
+    this.apiUrl = api.apiEndpoint;
 
     new CfnOutput(this, 'ApiUrl', { value: this.apiUrl });
   }
