@@ -8,6 +8,7 @@ import { GitHubAppSourceCodeProvider } from '../constructs/github-app-source-cod
 export interface FrontendStackProps extends StackProps {
   userPoolId: string;
   userPoolClientId: string;
+  apiUrl: string;
 }
 
 export class FrontendStack extends Stack {
@@ -29,6 +30,7 @@ export class FrontendStack extends Stack {
         AMPLIFY_DIFF_DEPLOY: 'true',
         PUBLIC_COGNITO_USER_POOL_ID: props.userPoolId,
         PUBLIC_COGNITO_USER_POOL_CLIENT_ID: props.userPoolClientId,
+        PUBLIC_API_URL: props.apiUrl,
       },
       buildSpec: BuildSpec.fromObjectToYaml({
         version: 1,

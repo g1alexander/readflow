@@ -16,6 +16,7 @@ import {
 } from 'aws-cdk-lib/aws-s3';
 import type { Construct } from 'constructs';
 import { config } from '../config.js';
+import { getCorsOrigins } from '../context.js';
 
 export class StorageStack extends Stack {
   readonly table: ITable;
@@ -24,14 +25,7 @@ export class StorageStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    const corsOrigins: unknown = this.node.tryGetContext('corsOrigins');
-    if (
-      !Array.isArray(corsOrigins) ||
-      corsOrigins.length === 0 ||
-      !corsOrigins.every((origin) => typeof origin === 'string' && origin.length > 0)
-    ) {
-      throw new Error('Context "corsOrigins" must be a non-empty array of origin strings');
-    }
+    const corsOrigins = getCorsOrigins(this);
 
     this.table = new Table(this, 'Table', {
       tableName: config.appName,
