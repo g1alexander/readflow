@@ -1,11 +1,13 @@
 # readflow
 
-Webapp serverless personal de biblioteca y lectura (EPUB → Kindle). Monorepo: `frontend/` (Astro) e `infrastructure/` (CDK v2, `us-east-1`).
+Webapp serverless personal de biblioteca y lectura (EPUB → Kindle). Monorepo: `frontend/` (Astro), `serverless/` (Lambdas Python 3.13) e `infrastructure/` (CDK v2, `us-east-1`).
 
 ## Comandos
 
 - Front dev: `cd frontend && pnpm dev`
 - Front build: `cd frontend && pnpm build`
+- Serverless tests: `cd serverless && uv run pytest -q`
+- Serverless lint: `cd serverless && uv run ruff check && uv run ruff format --check`
 - Infra type-check: `cd infrastructure && pnpm build`
 - Infra tests: `cd infrastructure && pnpm test --reporter=dot`
 - Infra un test: `cd infrastructure && pnpm exec vitest run <file> --reporter=dot`
@@ -16,6 +18,7 @@ Webapp serverless personal de biblioteca y lectura (EPUB → Kindle). Monorepo: 
 ## Estructura
 
 - `frontend/src/scripts/`: lógica por página + `store.ts` (datos) y `auth.ts` (Cognito).
+- `serverless/src/api/`: Lambda `api`; `handler.py` despacha por `routeKey` a `routes/` ([ADR 0008](docs/adr/0008-http-api-una-lambda-con-router.md)). Se empaqueta `serverless/src` tal cual.
 - `infrastructure/bin/readflow.ts`: instancia stacks y pasa outputs por props.
 - `infrastructure/lib/stacks/`: un stack por dominio ([ADR 0004](docs/adr/0004-stacks-cdk-por-dominio.md)).
 - `infrastructure/lib/constructs/`: piezas sin lógica de dominio.

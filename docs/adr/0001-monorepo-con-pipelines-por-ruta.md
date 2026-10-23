@@ -10,10 +10,10 @@ Readflow tiene tres piezas desplegables: el frontend Astro (Amplify Hosting), la
 
 ## Decision
 
-Todo vive en este repo, en `frontend/`, `backend/` e `infrastructure/`, y cada pipeline se dispara solo por cambios en sus rutas.
+Todo vive en este repo, en `frontend/`, `serverless/` e `infrastructure/`, y cada pipeline se dispara solo por cambios en sus rutas.
 
 - Amplify: `appRoot: frontend` + `AMPLIFY_DIFF_DEPLOY=true`.
-- GitHub Actions (`cdk deploy`): `on.push.paths: ['backend/**', 'infrastructure/**']`.
+- GitHub Actions (`cdk deploy`): `on.push.paths: ['serverless/**', 'infrastructure/**']`.
 - Las Lambdas no tienen pipeline propio: CDK las empaqueta con `Code.fromAsset` y solo actualiza las que cambiaron (hash del asset).
 
 ## Rejected alternatives
