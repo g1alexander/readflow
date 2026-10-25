@@ -1,5 +1,5 @@
-import { load, addBooks, colorFor, uid, stateName, type Book } from './store';
-import { createUpload, putFile, type ApiBook } from './api';
+import { colorFor, uid } from './store';
+import { createUpload, putFile } from './api';
 import { $, esc, coverHTML, fmtSize, pill, toast, type PillTone } from './ui';
 
 const MAX_SIZE = 100 * 1024 * 1024;
@@ -15,18 +15,7 @@ const STATUS: Record<Status, [PillTone, string]> = {
 
 const titleFromName = (name: string) => name.replace(/\.epub$/i, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
 
-const toBook = (b: ApiBook, size: number): Book => {
-  const [bg, ink] = colorFor(b.id);
-  return {
-    id: b.id, title: b.name, author: b.authors.map((a) => a.name).join(', ') || 'Autor desconocido', state: b.status, bg, ink, cover: null,
-    file: { name: b.epubFileName, size },
-    added: b.createdAt, history: [{ at: b.createdAt, text: 'Agregado a la biblioteca en ' + stateName(b.status) }],
-    kindle: null, ingest: b.ingest,
-  };
-};
-
 export function initUpload() {
-  load();
   let queue: QueueItem[] = [];
   let busy = false;
   const dz = $('#dropzone');
@@ -78,9 +67,8 @@ export function initUpload() {
       q.status = 'uploading';
       render();
       try {
-        const { book, upload } = await createUpload(q.file);
+        const { upload } = await createUpload(q.file);
         await putFile(upload, q.file);
-        addBooks([toBook(book, q.file.size)]);
         done.add(q.key);
       } catch (err) {
         console.error(err);

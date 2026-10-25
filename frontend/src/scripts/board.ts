@@ -1,4 +1,5 @@
-import { STATES, isState, load, getBook, moveBook, onChange, pollIngest, resumePending, type Book, type StateId } from './store';
+import { STATES, isState, load, getBook, moveBook, onChange, pollPending, showError, type Book, type StateId } from './store';
+import { getSettings } from './api';
 import { $, esc, icon, coverHTML, fmtDate, pill, ICON_SM, STATE_BTN } from './ui';
 
 const detailHref = (b: Book) => `/libro?id=${encodeURIComponent(b.id)}`;
@@ -24,12 +25,13 @@ function ingestHTML(b: Book) {
 function kindleStatusHTML(b: Book) {
   const base = 'mt-auto flex items-center gap-1.5 text-[13px] font-medium max-md:text-xs max-md:font-semibold';
   if (b.kindle?.status === 'sending') return `<span class="${base} text-onhold-ink">${icon('clock', ICON_SM)}Enviando al Kindle…</span>`;
-  if (b.kindle?.status === 'delivered') return `<span class="${base} text-reading-ink">${icon('check', ICON_SM)}En tu Kindle desde el ${fmtDate(b.kindle.at)}</span>`;
+  if (b.kindle?.status === 'sent') return `<span class="${base} text-reading-ink">${icon('check', ICON_SM)}En tu Kindle desde el ${fmtDate(b.kindle.at)}</span>`;
+  if (b.kindle?.status === 'failed') return `<span class="${base} text-err-ink">No se pudo enviar al Kindle</span>`;
   return `<span class="${base}">Aún no enviado</span>`;
 }
 
-export function initBoard() {
-  const books = load();
+export async function initBoard() {
+  let books: Book[] = [];
   let query = '';
   let mobileTab: StateId = 'toread';
   let dragId: string | null = null;
@@ -161,6 +163,15 @@ export function initBoard() {
 
   onChange(render);
   render();
-  resumePending();
-  pollIngest();
+  getSettings()
+    .then((s) => { $('#kindle-email').textContent = s.kindleEmail ?? 'Configura tu correo en Ajustes'; })
+    .catch(showError);
+  try {
+    books = await load();
+  } catch (err) {
+    showError(err);
+    return;
+  }
+  render();
+  pollPending();
 }

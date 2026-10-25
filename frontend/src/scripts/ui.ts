@@ -29,7 +29,7 @@ export const NAV: { label: string; icon: IconName; href?: string }[] = [
   { label: 'Tablero', icon: 'board', href: '/tablero' },
   { label: 'Biblioteca', icon: 'library' },
   { label: 'Notas', icon: 'notes' },
-  { label: 'Ajustes', icon: 'settings' },
+  { label: 'Ajustes', icon: 'settings', href: '/ajustes' },
 ];
 
 const BTN_BASE = 'inline-flex items-center justify-center gap-2 rounded-md border no-underline whitespace-nowrap transition-colors disabled:opacity-55 disabled:cursor-not-allowed aria-disabled:opacity-55 aria-disabled:cursor-not-allowed';
@@ -64,6 +64,8 @@ export const SUBTITLE = 'text-muted';
 export const SECTION_TITLE = 'text-[13px] font-bold tracking-[.06em] text-muted';
 export const CARD_TITLE = 'text-lg font-bold';
 export const FIELD_FOCUS = 'focus:outline-none focus:border-toread-dot focus:ring-3 focus:ring-toread-bg';
+export const FIELD = `h-11 px-3.5 rounded-md border border-line-strong bg-surface text-[15px] w-full min-w-0 ${FIELD_FOCUS}`;
+export const FIELD_LABEL = 'text-sm font-semibold';
 export const STATE_BTN = 'min-h-11 px-[18px] rounded-full border-2 border-line-soft bg-surface text-ink-2 text-sm font-bold hover:not-aria-pressed:border-s-dot aria-pressed:bg-s-bg aria-pressed:text-s-ink aria-pressed:border-s-ink max-md:px-1.5 max-md:rounded-md max-md:text-[13px]';
 export const STATES_ROW = 'flex flex-wrap gap-2 max-md:grid max-md:grid-cols-3';
 
@@ -90,14 +92,14 @@ export type CoverSize = keyof typeof COVER;
 
 export function coverHTML(c: CoverData, size: CoverSize): string {
   const s = COVER[size];
-  const img = c.cover ? `<img class="absolute inset-0 size-full object-cover" src="${esc(c.cover)}" alt="">` : '';
+  const img = c.cover ? `<img class="absolute inset-0 size-full object-cover" src="${esc(c.cover)}" alt="" onerror="this.remove()">` : '';
   const initialOnly = !s.author;
   return `<div class="relative shrink-0 overflow-hidden flex flex-col justify-between aspect-[2/3] bg-(--c-bg) text-(--c-ink) ${s.box}" style="--c-bg:${esc(c.bg)};--c-ink:${esc(c.ink)}" aria-hidden="true">${img}
     <span class="font-display font-bold tracking-[-0.01em] ${s.title}">${esc(initialOnly ? c.title.charAt(0) : c.title)}</span>
     ${initialOnly ? '' : `<span class="font-semibold opacity-90 ${s.author}">${esc(c.author)}</span>`}</div>`;
 }
 
-export function toast(msg: string, iconName?: IconName) {
+export function toast(msg: string, iconName?: IconName, href?: string) {
   let wrap = document.querySelector<HTMLElement>('[data-toasts]');
   if (!wrap) {
     wrap = document.createElement('div');
@@ -107,11 +109,12 @@ export function toast(msg: string, iconName?: IconName) {
     wrap.setAttribute('aria-live', 'polite');
     document.body.appendChild(wrap);
   }
-  const el = document.createElement('div');
-  el.className = 'flex items-center gap-2.5 px-4 py-3 rounded-[14px] bg-ink text-white text-sm font-semibold shadow-[0_10px_28px_rgba(43,40,64,.25)] animate-toast-in';
+  const el = document.createElement(href ? 'a' : 'div');
+  if (el instanceof HTMLAnchorElement && href) el.href = href;
+  el.className = (href ? 'pointer-events-auto underline hover:text-white ' : '') + 'flex items-center gap-2.5 px-4 py-3 rounded-[14px] bg-ink text-white text-sm font-semibold shadow-[0_10px_28px_rgba(43,40,64,.25)] animate-toast-in';
   el.innerHTML = (iconName ? icon(iconName, ICON_SM) : '') + '<span>' + esc(msg) + '</span>';
   wrap.appendChild(el);
-  setTimeout(() => el.remove(), 3200);
+  setTimeout(() => el.remove(), href ? 6000 : 3200);
 }
 
 export const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => {

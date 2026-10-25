@@ -1,4 +1,4 @@
-import { listBooks } from './api';
+import { ApiError, listBooks, getBook as apiGetBook, patchBook, resendKindle, deleteBook as apiDeleteBook, type ApiBook, type ApiEvent, type BookPatch } from './api';
 import { toast } from './ui';
 
 export const STATES = [
@@ -14,19 +14,43 @@ export type StateId = (typeof STATES)[number]['id'];
 export const isState = (v: unknown): v is StateId => STATES.some((s) => s.id === v);
 export const stateName = (id: StateId) => (STATES.find((s) => s.id === id) ?? STATES[0]).name;
 
+export const TYPES = [
+  { id: 'productivity', name: 'Desarrollo y Productividad' },
+  { id: 'wellbeing', name: 'Mente y bienestar' },
+  { id: 'history', name: 'Historia y Sociedad' },
+  { id: 'film', name: 'Cine y cultura' },
+  { id: 'philosophy', name: 'Filosofía' },
+  { id: 'fiction', name: 'Clásicos y Narrativa' },
+  { id: 'thriller', name: 'Thriller y Terror' },
+  { id: 'scifi', name: 'Ciencia Ficción y Fantasía' },
+  { id: 'design', name: 'Arte y Diseño' },
+  { id: 'strategy', name: 'Sistemas y Estrategia' },
+  { id: 'programming', name: 'Programación y Software' },
+  { id: 'other', name: 'Otros y Antologías' },
+] as const;
+
+export type TypeId = (typeof TYPES)[number]['id'];
+export const isType = (v: unknown): v is TypeId => TYPES.some((t) => t.id === v);
+
+export type EventKind = ApiEvent['kind'];
+
 export interface Book {
   id: string;
   title: string;
   author: string;
+  authors: string[];
   state: StateId;
+  type?: TypeId;
+  score?: number;
+  year?: number;
   bg: string;
   ink: string;
   cover: string | null;
-  file: { name: string; size: number };
+  file: { name: string; size?: number };
   added: string;
-  history: { at: string; text: string }[];
-  kindle: { status: 'sending' | 'delivered'; at: string } | null;
-  ingest?: 'pending' | 'ready' | 'failed';
+  history: { at: string; kind: EventKind; text: string }[];
+  kindle: { status: 'sending' | 'sent' | 'failed'; at: string } | null;
+  ingest: 'pending' | 'ready' | 'failed';
   ingestError?: string;
 }
 
@@ -43,164 +67,159 @@ export const colorFor = (text: string): [string, string] => {
 
 export const uid = () => 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
-export const CONFIG = { kindleEmail: '[tu-correo]@kindle.com' };
+const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
-function seed(): Book[] {
-  const now = Date.now();
-  const day = 86400000;
-  const palette: Record<string, [string, string]> = {
-    'Cien años de soledad': ['#F6E7A8', '#6B4F0E'], 'El infinito en un junco': ['#D6E6F7', '#2A4E75'],
-    'Project Hail Mary': ['#F7D2DC', '#7A2E44'], 'Klara y el Sol': ['#D5EFE3', '#1F5A40'],
-    'Piranesi': ['#E2DAF6', '#433683'], 'La península de las casas vacías': ['#F9DCCB', '#6E3318'],
-    'El nombre del viento': ['#CFE8DC', '#1F4A37'], 'Pedro Páramo': ['#F8D9C8', '#6E3318'],
-    'Middlemarch': ['#DCE9F7', '#244E78'], 'Tomás Nevinson': ['#E5DDF7', '#433683'],
-    'Hábitos atómicos': ['#FBEDB8', '#6B4F0E'], 'La vegetariana': ['#D5EFE3', '#1F5A40'],
-    'Ulises': ['#E9E6EE', '#4A4660'],
-  };
-  const mk = (title: string, author: string, state: StateId, daysAgo: number, extra: Partial<Book> = {}): Book => {
-    const [bg, ink] = palette[title] ?? colorFor(title);
-    const added = new Date(now - daysAgo * day).toISOString();
-    const slug = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-');
-    return {
-      id: uid(), title, author, state, bg, ink, cover: null,
-      file: { name: slug + '.epub', size: 1200000 + title.length * 91234 },
-      added, history: [{ at: added, text: 'Agregado a la biblioteca' }],
-      kindle: null, ...extra,
-    };
-  };
-  const sentAt = new Date(now - 2 * day).toISOString();
-  return [
-    mk('Cien años de soledad', 'Gabriel García Márquez', 'toread', 30),
-    mk('El infinito en un junco', 'Irene Vallejo', 'toread', 26),
-    mk('Project Hail Mary', 'Andy Weir', 'toread', 20),
-    mk('Klara y el Sol', 'Kazuo Ishiguro', 'toread', 12),
-    mk('Piranesi', 'Susanna Clarke', 'upnext', 18),
-    mk('La península de las casas vacías', 'David Uclés', 'upnext', 9),
-    mk('El nombre del viento', 'Patrick Rothfuss', 'reading', 28, {
-      kindle: { status: 'delivered', at: sentAt },
-      history: [
-        { at: new Date(now - 28 * day).toISOString(), text: 'Agregado a la biblioteca' },
-        { at: sentAt, text: 'Movido a Reading' },
-        { at: sentAt, text: 'Email enviado a ' + CONFIG.kindleEmail },
-        { at: sentAt, text: 'Aceptado por el servidor de correo' },
-      ],
-    }),
-    mk('Pedro Páramo', 'Juan Rulfo', 'reading', 6, { kindle: { status: 'sending', at: new Date().toISOString() } }),
-    mk('Middlemarch', 'George Eliot', 'onhold', 60),
-    mk('Tomás Nevinson', 'Javier Marías', 'finished', 90),
-    mk('Hábitos atómicos', 'James Clear', 'finished', 120),
-    mk('La vegetariana', 'Han Kang', 'finished', 75),
-    mk('Ulises', 'James Joyce', 'dropped', 200),
-  ];
+function eventText(ev: ApiEvent): string {
+  const d = ev.data;
+  switch (ev.kind) {
+    case 'uploaded': return 'Agregado a la biblioteca';
+    case 'ingest_ready': return 'Metadata extraída del EPUB';
+    case 'ingest_failed': return 'No se pudo leer el EPUB: ' + (str(d.error) || 'error desconocido');
+    case 'status_changed': {
+      const from = isState(d.from) ? stateName(d.from) : str(d.from);
+      const to = isState(d.to) ? stateName(d.to) : str(d.to);
+      return 'Movido de ' + from + ' a ' + to;
+    }
+    case 'kindle_requested': return 'Envío al Kindle pedido';
+    case 'kindle_sent': return 'Aceptado por el servidor de correo';
+    case 'kindle_failed': return 'Falló el envío al Kindle' + (str(d.error) ? ': ' + str(d.error) : '');
+    default: return String(ev.kind);
+  }
 }
 
-const KEY = 'readflow:books:v1';
-let books: Book[] = [];
+function toBook(b: ApiBook, history: Book['history']): Book {
+  const [bg, ink] = colorFor(b.id);
+  const k = b.kindle;
+  return {
+    id: b.id,
+    title: b.name,
+    author: b.authors.map((a) => a.name).join(', ') || 'Autor desconocido',
+    authors: b.authors.map((a) => a.name),
+    state: b.status,
+    type: b.type,
+    score: b.score,
+    year: b.year,
+    bg, ink,
+    cover: b.coverUrl ?? null,
+    file: { name: b.epubFileName, size: b.epubSize },
+    added: b.createdAt,
+    history,
+    kindle: k?.status ? { status: k.status, at: k.at ?? k.requestedAt ?? b.updatedAt } : null,
+    ingest: b.ingest,
+    ingestError: b.ingestError,
+  };
+}
 
-export function load(): Book[] {
-  try {
-    const raw = localStorage.getItem(KEY);
-    books = raw ? JSON.parse(raw) : seed();
-    if (!raw) save();
-  } catch {
-    books = seed();
-  }
+const books: Book[] = [];
+
+function upsert(b: ApiBook, events?: ApiEvent[]): Book {
+  const i = books.findIndex((x) => x.id === b.id);
+  const history = events ? events.map((ev) => ({ at: ev.at, kind: ev.kind, text: eventText(ev) })) : books[i]?.history ?? [];
+  const book = toBook(b, history);
+  if (i < 0) books.push(book);
+  else books[i] = book;
+  return book;
+}
+
+export async function load(): Promise<Book[]> {
+  const { books: list } = await listBooks();
+  const prev = new Map(books.map((b) => [b.id, b.history]));
+  books.splice(0, books.length, ...list.map((b) => toBook(b, prev.get(b.id) ?? [])));
   return books;
-}
-
-export function save() {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(books));
-  } catch {
-    toast('No se pudo guardar en este navegador');
-  }
 }
 
 export const getBook = (id: string | null) => books.find((b) => b.id === id);
 
-export function addBooks(list: Book[]) {
-  books.unshift(...list);
-  save();
+export async function fetchBook(id: string): Promise<Book> {
+  const { book, events } = await apiGetBook(id);
+  return upsert(book, events);
 }
 
 const listeners = new Set<() => void>();
 export const onChange = (fn: () => void) => listeners.add(fn);
 const notify = () => listeners.forEach((fn) => fn());
 
-export function sendToKindle(book: Book) {
-  const at = new Date().toISOString();
-  book.kindle = { status: 'sending', at };
-  book.history.push({ at, text: 'Email enviado a ' + CONFIG.kindleEmail });
-  save();
-  toast('Enviando «' + book.title + '» a tu Kindle…', 'mail');
-  setTimeout(() => {
-    const fresh = getBook(book.id);
-    if (!fresh) return;
-    const done = new Date().toISOString();
-    fresh.kindle = { status: 'delivered', at: done };
-    fresh.history.push({ at: done, text: 'Aceptado por el servidor de correo' });
-    save();
-    toast('Listo: ya está en tu Kindle', 'check');
-    notify();
-  }, 2200);
+export function showError(err: unknown) {
+  console.error(err);
+  const code = err instanceof ApiError ? err.code : '';
+  if (code === 'kindle_email_missing') return toast('Configura tu correo de Kindle en Ajustes', 'settings', '/ajustes');
+  if (code === 'ingest_failed') return toast('El EPUB no se pudo procesar: no se puede enviar al Kindle');
+  if (code === 'not_found') return toast('El libro ya no existe');
+  if (code === 'invalid_request') return toast('Datos no válidos: ' + (err as ApiError).message);
+  toast('No se pudo conectar con el servidor');
 }
 
-export function moveBook(id: string, state: StateId) {
+export async function updateBook(id: string, body: BookPatch): Promise<Book | undefined> {
+  try {
+    const book = upsert((await patchBook(id, body)).book);
+    notify();
+    return book;
+  } catch (err) {
+    showError(err);
+  }
+}
+
+export async function moveBook(id: string, state: StateId) {
   const book = getBook(id);
   if (!book || book.state === state) return;
-  const prev = book.state;
-  book.state = state;
-  book.history.push({ at: new Date().toISOString(), text: 'Movido de ' + stateName(prev) + ' a ' + stateName(state) });
-  save();
-  if (state === 'reading') sendToKindle(book);
+  const updated = await updateBook(id, { status: state });
+  if (!updated) return;
+  if (state === 'reading') toast('Enviando «' + updated.title + '» a tu Kindle…', 'mail');
   else toast('Movido a ' + stateName(state));
-  notify();
+  pollPending();
 }
 
-export function resumePending() {
-  books.filter((b) => b.kindle?.status === 'sending').forEach((b) => {
-    setTimeout(() => {
-      b.kindle = { status: 'delivered', at: new Date().toISOString() };
-      b.history.push({ at: b.kindle.at, text: 'Aceptado por el servidor de correo' });
-      save();
-      notify();
-    }, 2500);
-  });
+export async function sendToKindle(id: string) {
+  try {
+    const book = upsert((await resendKindle(id)).book);
+    toast('Enviando «' + book.title + '» a tu Kindle…', 'mail');
+    notify();
+    pollPending();
+  } catch (err) {
+    showError(err);
+  }
+}
+
+export async function removeBook(id: string): Promise<boolean> {
+  try {
+    await apiDeleteBook(id);
+    const i = books.findIndex((b) => b.id === id);
+    if (i >= 0) books.splice(i, 1);
+    notify();
+    return true;
+  } catch (err) {
+    showError(err);
+    return false;
+  }
 }
 
 const POLL_MS = 3000;
 const POLL_LIMIT_MS = 2 * 60 * 1000;
+const pending = (b: Book) => b.ingest === 'pending' || b.kindle?.status === 'sending';
 let polling = false;
+let detailId: string | null = null;
 
-export async function pollIngest() {
+export async function pollPending() {
   if (polling) return;
   polling = true;
   const until = Date.now() + POLL_LIMIT_MS;
-  while (books.some((b) => b.ingest === 'pending') && Date.now() < until) {
+  while (books.some(pending) && Date.now() < until) {
     await new Promise((resolve) => setTimeout(resolve, POLL_MS));
     try {
-      const fresh = new Map((await listBooks()).books.map((b) => [b.id, b]));
-      let changed = false;
-      for (const book of books) {
-        const b = fresh.get(book.id);
-        if (book.ingest !== 'pending' || !b || b.ingest === 'pending') continue;
-        const at = b.updatedAt;
-        book.ingest = b.ingest;
-        if (b.ingest === 'ready') {
-          book.title = b.name;
-          book.author = b.authors.map((a) => a.name).join(', ') || 'Autor desconocido';
-          book.file.size = b.epubSize ?? book.file.size;
-          book.history.push({ at, text: 'Metadata extraída del EPUB' });
-        } else {
-          book.ingestError = b.ingestError;
-          book.history.push({ at, text: 'No se pudo leer el EPUB: ' + (b.ingestError ?? 'error desconocido') });
-        }
-        changed = true;
+      const before = new Map(books.map((b) => [b.id, b.kindle?.status]));
+      if (detailId) await fetchBook(detailId);
+      else await load();
+      for (const b of books) {
+        if (before.get(b.id) !== 'sending') continue;
+        if (b.kindle?.status === 'sent') toast('Listo: «' + b.title + '» ya está en tu Kindle', 'check');
+        if (b.kindle?.status === 'failed') toast('No se pudo enviar «' + b.title + '» al Kindle');
       }
-      if (changed) { save(); notify(); }
+      notify();
     } catch (err) {
       console.error(err);
     }
   }
   polling = false;
 }
+
+export const watchBook = (id: string) => { detailId = id; };

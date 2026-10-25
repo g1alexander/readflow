@@ -88,7 +88,7 @@ El historial del libro vive en su propia partición, así que el Query del table
 | `entity` | `"EVENT"` | |
 | `bookId` | string | |
 | `kind` | enum | `uploaded`, `ingest_ready`, `ingest_failed`, `status_changed`, `kindle_requested`, `kindle_sent`, `kindle_failed` |
-| `data` | map | Depende de `kind`: `uploaded` → `{fileName, size}`, `ingest_ready` → `{}`, `ingest_failed` → `{error}` (igual a `ingestError`), `status_changed` → `{from, to}` |
+| `data` | map | Depende de `kind`: `uploaded` → `{fileName, size}`, `ingest_ready` → `{}`, `ingest_failed` → `{error}` (igual a `ingestError`), `status_changed` → `{from, to}`, `kindle_requested` → `{}` |
 | `at` | string ISO | |
 
 El texto que muestra el timeline lo arma el front a partir de `kind` + `data`.
@@ -106,7 +106,7 @@ El texto que muestra el timeline lo arma el front a partir de `kind` + `data`.
 | # | Caso | Quién | Operación |
 | --- | --- | --- | --- |
 | 1 | Tablero: todos mis libros | API | `Query PK=USER#<sub> AND begins_with(SK, "BOOK#")`. Paginar con `LastEvaluatedKey` (1 MB por página) hasta agotar. El front agrupa por `status` |
-| 2 | Detalle de un libro | API | En paralelo: `GetItem USER#<sub> / BOOK#<id>` y `Query PK=BOOK#<id> AND begins_with(SK, "EVENT#")`, `ScanIndexForward=false`. Si el GetItem no devuelve nada → 404 sin leer eventos (esa lectura es la verificación de dueño) |
+| 2 | Detalle de un libro | API | `GetItem USER#<sub> / BOOK#<id>` y después `Query PK=BOOK#<id> AND begins_with(SK, "EVENT#")`, `ScanIndexForward=false`. Si el GetItem no devuelve nada → 404 sin leer eventos (esa lectura es la verificación de dueño) |
 | 3 | Autocompletar autores | API | `Query PK=USER#<sub> AND begins_with(SK, "AUTHOR#")` |
 | 4 | Crear libro (`POST /uploads`) | API | `TransactWriteItems`: Put Book (`status=toread`, `ingest=pending`, `attribute_not_exists(PK)`) + Put Event `uploaded`. El body no trae `status`: todo libro nace en `toread` y el envío a Kindle solo sale del patrón #6. Devuelve la presigned URL de `epubKey` |
 | 5 | Guardar metadata | Lambda metadata | Saca `<sub>` e `<id>` de la key S3. Put condicional por cada autor (§Author). `TransactWriteItems`: Update Book (`name`, `authors`, `year`, `coverKey`, `epubSize`, `ingest=ready`, condición `ingest = pending`) + Put Event `ingest_ready`. Si el EPUB es inválido: `epubSize`, `ingest=failed` + `ingestError` + Event `ingest_failed` (misma condición). Otros errores no tocan el libro: van a la cola de fallos |
@@ -114,7 +114,7 @@ El texto que muestra el timeline lo arma el front a partir de `kind` + `data`.
 | 7 | Reenviar a Kindle | API | `TransactWriteItems`: Update `kindle.requestedAt=now`, `kindle.status=sending` + Put Event `kindle_requested` |
 | 8 | Editar campos (`name`, `authors`, `type`, `score`, `year`) | API | `UpdateItem` con `attribute_exists(PK)`. Autores nuevos: Put condicional antes |
 | 9 | Resultado del envío | Lambda Kindle | `TransactWriteItems`: Update `kindle.status` (`sent`/`failed`) y `kindle.at` + Put Event `kindle_sent`/`kindle_failed` |
-| 10 | Borrar libro | API | Delete Book; Query + `BatchWriteItem` de los eventos; borrar el prefijo S3 del libro |
+| 10 | Borrar libro | API | `GetItem` del Book (verificación de dueño, 404 si no existe); borrar el prefijo S3 del libro; Query + `BatchWriteItem` de los eventos; al final Delete Book. El Book va último para que repetir el borrado tras un fallo termine el trabajo |
 | 11 | Leer/guardar ajustes | API | `GetItem` / `PutItem USER#<sub> / SETTINGS` |
 | 12 | Polling de `ingest` | Front | Repite #2 (o #1) hasta `ingest != pending`. Push: [ALE-10](https://linear.app/g1alexander/issue/ALE-10) |
 

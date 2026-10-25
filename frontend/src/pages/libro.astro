@@ -4,9 +4,10 @@ import CenteredPage from '../components/CenteredPage.astro';
 import BackLink from '../components/BackLink.astro';
 import Panel from '../components/Panel.astro';
 import Icon from '../components/Icon.astro';
-import { btn, pill, DISPLAY, SUBTITLE, SECTION_TITLE, STATES_ROW } from '../scripts/ui';
+import { btn, pill, DISPLAY, SUBTITLE, SECTION_TITLE, STATES_ROW, FIELD, FIELD_LABEL } from '../scripts/ui';
 const title = `${DISPLAY} leading-[1.05] text-[44px] max-md:text-[26px]`;
 const author = 'text-[17px] text-muted max-md:text-[15px]';
+
 ---
 <Base title="Libro — Readflow" auth="private">
   <CenteredPage wide>
@@ -49,6 +50,38 @@ const author = 'text-[17px] text-muted max-md:text-[15px]';
           </div>
         </Panel>
 
+        <Panel title="Datos del libro" titleId="edit-title">
+          <form class="flex flex-col gap-4" id="edit-form" novalidate>
+            <div class="flex flex-col gap-1.5">
+              <label class={FIELD_LABEL} for="f-name">Título</label>
+              <input class={FIELD} id="f-name" type="text" maxlength="300" required />
+            </div>
+            <fieldset class="flex flex-col gap-1.5 border-0 p-0 m-0">
+              <legend class={`${FIELD_LABEL} mb-1.5`}>Autores</legend>
+              <div class="flex flex-col gap-2" id="f-authors"></div>
+              <datalist id="author-options"></datalist>
+              <button class={`${btn('ghost')} self-start`} type="button" id="add-author">Agregar autor</button>
+            </fieldset>
+            <div class="grid grid-cols-3 gap-3 max-md:grid-cols-1">
+              <div class="flex flex-col gap-1.5">
+                <label class={FIELD_LABEL} for="f-type">Tipo</label>
+                <select class={FIELD} id="f-type"></select>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class={FIELD_LABEL} for="f-score">Puntuación</label>
+                <select class={FIELD} id="f-score"></select>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class={FIELD_LABEL} for="f-year">Año</label>
+                <input class={FIELD} id="f-year" type="number" min="0" step="1" inputmode="numeric" />
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2.5">
+              <button class={btn('primary')} type="submit" id="save-edit">Guardar cambios</button>
+            </div>
+          </form>
+        </Panel>
+
         <Panel title="Notas de lectura" titleId="notes-title">
           <span slot="head" class={pill('warn')}>Opcional · importación por definir</span>
           <p class={`${SUBTITLE} text-sm`}>Los highlights del Kindle se guardarán como Markdown con esta forma:</p>
@@ -59,6 +92,10 @@ const author = 'text-[17px] text-muted max-md:text-[15px]';
             <button class={btn('sky')} type="button" aria-disabled="true" disabled>Commit a GitHub</button>
           </div>
         </Panel>
+
+        <div class="flex justify-end">
+          <button class={btn('outline')} type="button" id="delete">Borrar libro</button>
+        </div>
       </div>
     </div>
   </CenteredPage>

@@ -1,0 +1,36 @@
+---
+import Base from '../layouts/Base.astro';
+import CenteredPage from '../components/CenteredPage.astro';
+import BackLink from '../components/BackLink.astro';
+import Panel from '../components/Panel.astro';
+import { btn, PAGE_TITLE, SUBTITLE, FIELD, FIELD_LABEL } from '../scripts/ui';
+---
+<Base title="Ajustes — Readflow" auth="private">
+  <CenteredPage>
+    <BackLink />
+
+    <div class="flex flex-col gap-1.5">
+      <h1 class={PAGE_TITLE}>Ajustes</h1>
+      <p class={SUBTITLE}>Los libros que muevas a Reading se envían a este correo.</p>
+    </div>
+
+    <Panel title="Kindle" titleId="kindle-title">
+      <form class="flex flex-col gap-4" id="settings-form" novalidate>
+        <div class="flex flex-col gap-1.5">
+          <label class={FIELD_LABEL} for="kindle-email">Correo de tu Kindle</label>
+          <input class={FIELD} id="kindle-email" type="email" maxlength="254" placeholder="nombre@kindle.com" autocomplete="off" aria-describedby="kindle-help settings-error" />
+          <p class="text-[13px] text-muted" id="kindle-help">Debe terminar en @kindle.com. Déjalo vacío para quitarlo.</p>
+          <p class="text-[13px] font-semibold text-err-ink" id="settings-error" hidden></p>
+        </div>
+        <div class="flex flex-wrap gap-2.5">
+          <button class={btn('primary')} type="submit" id="settings-save" disabled>Guardar</button>
+        </div>
+      </form>
+    </Panel>
+  </CenteredPage>
+</Base>
+
+<script>
+  import { initSettings } from '../scripts/settings';
+  initSettings();
+</script>
