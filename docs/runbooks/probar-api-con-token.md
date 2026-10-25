@@ -64,7 +64,7 @@ aws s3 ls "s3://g1-readflowstorage-epub/$(jq -r .book.epubKey /tmp/upload.json)"
 | Síntoma | Causa probable |
 | --- | --- |
 | `401` con token | Se usó el ID token, o expiró |
-| `500 {"error":{"code":"internal",...}}` | Ver logs: CloudWatch → log group de `ApiFunction` en `ReadflowServerless` |
+| `500 {"error":{"code":"internal",...}}` | Ver logs: CloudWatch → log group de la Lambda `readflow-api` |
 | `400 invalid_request` en `/uploads` | `fileName` sin `.epub`, `size` no entero o mayor a 100 MB |
 | `403 SignatureDoesNotMatch` en el PUT | Falta `content-type: application/epub+zip` o es otro |
 | `403 AccessDenied` / `Request has expired` en el PUT | La URL venció (15 min); pedir otra con `POST /uploads` |

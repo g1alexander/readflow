@@ -12,7 +12,7 @@ aws sqs receive-message --queue-url "$QUEUE_URL" --region us-east-1 \
 jq '.Messages[] | .Body | fromjson | {error: .responsePayload.errorMessage, key: .requestPayload.detail.object.key}' failures.json
 ```
 
-Cada mensaje trae el evento original (`requestPayload`) y el error (`responsePayload`). También están en CloudWatch, log group de `MetadataFunction`.
+Cada mensaje trae el evento original (`requestPayload`) y el error (`responsePayload`). También están en CloudWatch, en el log group de la Lambda `readflow-metadata`.
 
 ## 2. Corregir la causa
 
@@ -21,11 +21,8 @@ Desplegar el fix o esperar a que pase el problema transitorio.
 ## 3. Reprocesar
 
 ```sh
-FUNCTION=$(aws cloudformation describe-stack-resources --stack-name ReadflowServerless --region us-east-1 \
-  --query "StackResources[?ResourceType=='AWS::Lambda::Function' && starts_with(LogicalResourceId, 'MetadataFunction')].PhysicalResourceId" \
-  --output text)
 jq -c '.Messages[0].Body | fromjson | .requestPayload' failures.json > event.json
-aws lambda invoke --function-name "$FUNCTION" --region us-east-1 \
+aws lambda invoke --function-name readflow-metadata --region us-east-1 \
   --payload fileb://event.json response.json && cat response.json
 ```
 

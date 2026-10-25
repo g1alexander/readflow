@@ -1,5 +1,7 @@
 import { App } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { ServerlessStack } from '../lib/stacks/serverless-stack.js';
@@ -22,10 +24,25 @@ function createServerless(app: App, id: string) {
 
 describe('ServerlessStack', () => {
   let template: Template;
+  let outdir: string;
 
   beforeAll(() => {
     const app = new App({ context: { corsOrigins } });
     template = Template.fromStack(createServerless(app, 'TestServerless'));
+    outdir = app.synth().directory;
+  });
+
+  it.each([
+    ['readflow-api', 'api', 'metadata'],
+    ['readflow-metadata', 'metadata', 'api'],
+  ])('names %s and packages only its own code plus common', (name, own, other) => {
+    const [fn] = Object.values(
+      template.findResources('AWS::Lambda::Function', { Properties: { FunctionName: name } }),
+    );
+    const assetDir = join(outdir, `asset.${fn.Properties.Code.S3Key.replace('.zip', '')}`);
+    expect(existsSync(join(assetDir, own, 'handler.py'))).toBe(true);
+    expect(existsSync(join(assetDir, 'common', 'ulid.py'))).toBe(true);
+    expect(existsSync(join(assetDir, other))).toBe(false);
   });
 
   it('runs the api Lambda on Python 3.13 arm64 with the table and bucket names', () => {

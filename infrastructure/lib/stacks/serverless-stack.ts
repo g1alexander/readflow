@@ -13,6 +13,7 @@ import type { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import type { Construct } from 'constructs';
 import { join } from 'node:path';
+import { config } from '../config.js';
 import { getCorsOrigins } from '../context.js';
 
 export interface ServerlessStackProps extends StackProps {
@@ -28,9 +29,10 @@ export class ServerlessStack extends Stack {
   constructor(scope: Construct, id: string, props: ServerlessStackProps) {
     super(scope, id, props);
 
-    const code = Code.fromAsset(join(__dirname, '../../../serverless/src'), {
-      exclude: ['**/__pycache__'],
-    });
+    const code = (otherFunction: string) =>
+      Code.fromAsset(join(__dirname, '../../../serverless/src'), {
+        exclude: ['**/__pycache__', otherFunction],
+      });
     const environment = {
       TABLE_NAME: props.table.tableName,
       BUCKET_NAME: props.bucket.bucketName,
@@ -42,9 +44,10 @@ export class ServerlessStack extends Stack {
     });
 
     const apiFunction = new Function(this, 'ApiFunction', {
+      functionName: `${config.appName}-api`,
       runtime: Runtime.PYTHON_3_13,
       architecture: Architecture.ARM_64,
-      code,
+      code: code('metadata'),
       handler: 'api.handler.handler',
       memorySize: 256,
       timeout: Duration.seconds(10),
@@ -55,16 +58,17 @@ export class ServerlessStack extends Stack {
     props.bucket.grantPut(apiFunction);
 
     const metadataFailures = new Queue(this, 'MetadataFailures', {
-      queueName: 'readflow-metadata-failures',
+      queueName: `${config.appName}-metadata-failures`,
       retentionPeriod: Duration.days(14),
       enforceSSL: true,
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
     const metadataFunction = new Function(this, 'MetadataFunction', {
+      functionName: `${config.appName}-metadata`,
       runtime: Runtime.PYTHON_3_13,
       architecture: Architecture.ARM_64,
-      code,
+      code: code('api'),
       handler: 'metadata.handler.handler',
       memorySize: 512,
       timeout: Duration.seconds(60),

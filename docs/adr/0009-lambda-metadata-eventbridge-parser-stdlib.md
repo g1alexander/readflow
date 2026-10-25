@@ -10,7 +10,7 @@ Tras `POST /uploads` el libro existe con `ingest=pending` y el nombre del archiv
 
 ## Decision
 
-- **Lambda `metadata`** (Python 3.13, arm64, 512 MB, 60 s) en `ServerlessStack`, mismo asset que `api`. Código en `serverless/src/metadata/`; lo común con `api` (ULID) va a `serverless/src/common/`.
+- **Lambda `readflow-metadata`** (Python 3.13, arm64, 512 MB, 60 s) en `ServerlessStack`. Mismo `serverless/src` que `api`, sin la carpeta `api/` (ADR 0008). Código en `serverless/src/metadata/`; lo común con `api` (ULID) va a `serverless/src/common/`.
 - **Parser con stdlib** (`zipfile` + `xml.etree`): `container.xml` → OPF → `dc:title`, `dc:creator`, `dc:date`, portada (`properties="cover-image"` y, si no hay, `<meta name="cover">`).
 - **Trigger por EventBridge:** `eventBridgeEnabled` en el bucket + Rule `Object Created` filtrada por bucket y key `users/*/books/*/book.epub`, con target la Lambda.
 - **Errores:** un EPUB inválido se captura y deja el libro en `failed` sin reintento. Cualquier otro error se propaga: 2 reintentos async y luego on-failure destination a la cola SQS `readflow-metadata-failures` (14 días). Runbook: [reprocesar metadata](../runbooks/reprocesar-metadata.md).
