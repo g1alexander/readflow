@@ -6,6 +6,7 @@ import type { IUserPoolClient, UserPool } from 'aws-cdk-lib/aws-cognito';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Rule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Architecture, Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { SqsDestination } from 'aws-cdk-lib/aws-lambda-destinations';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
@@ -56,6 +57,25 @@ export class ServerlessStack extends Stack {
     });
     props.table.grantReadWriteData(apiFunction);
     props.bucket.grantPut(apiFunction);
+    apiFunction.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['s3:GetObject'],
+        resources: [props.bucket.arnForObjects('users/*/cover.*')],
+      }),
+    );
+    apiFunction.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['s3:DeleteObject'],
+        resources: [props.bucket.arnForObjects('users/*/books/*')],
+      }),
+    );
+    apiFunction.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['s3:ListBucket'],
+        resources: [props.bucket.bucketArn],
+        conditions: { StringLike: { 's3:prefix': 'users/*' } },
+      }),
+    );
 
     const metadataFailures = new Queue(this, 'MetadataFailures', {
       queueName: `${config.appName}-metadata-failures`,
@@ -103,6 +123,7 @@ export class ServerlessStack extends Stack {
         allowMethods: [
           CorsHttpMethod.GET,
           CorsHttpMethod.POST,
+          CorsHttpMethod.PUT,
           CorsHttpMethod.PATCH,
           CorsHttpMethod.DELETE,
         ],
@@ -121,19 +142,17 @@ export class ServerlessStack extends Stack {
     });
     const integration = new HttpLambdaIntegration('ApiIntegration', apiFunction);
 
-    api.addRoutes({
-      path: '/books',
-      methods: [HttpMethod.GET],
-      integration,
-      authorizer,
-    });
-
-    api.addRoutes({
-      path: '/uploads',
-      methods: [HttpMethod.POST],
-      integration,
-      authorizer,
-    });
+    const routes: [string, HttpMethod[]][] = [
+      ['/books', [HttpMethod.GET]],
+      ['/books/{id}', [HttpMethod.GET, HttpMethod.PATCH, HttpMethod.DELETE]],
+      ['/books/{id}/kindle', [HttpMethod.POST]],
+      ['/uploads', [HttpMethod.POST]],
+      ['/settings', [HttpMethod.GET, HttpMethod.PUT]],
+      ['/authors', [HttpMethod.GET]],
+    ];
+    for (const [path, methods] of routes) {
+      api.addRoutes({ path, methods, integration, authorizer });
+    }
 
     this.apiUrl = api.apiEndpoint;
 

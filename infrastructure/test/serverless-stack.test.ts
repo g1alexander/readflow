@@ -94,6 +94,7 @@ describe('ServerlessStack', () => {
     return policy.Properties.PolicyDocument.Statement as {
       Action: string | string[];
       Resource: unknown;
+      Condition?: unknown;
     }[];
   }
 
@@ -101,12 +102,25 @@ describe('ServerlessStack', () => {
     return statementsOf(role).flatMap((statement) => statement.Action);
   }
 
-  it('grants the api table read/write and S3 put, without S3 read or delete', () => {
-    const actions = actionsOf('ApiFunctionServiceRole');
+  it('grants the api table read/write and S3 only on the paths it uses', () => {
+    const statements = statementsOf('ApiFunctionServiceRole');
+    const actions = statements.flatMap((statement) => statement.Action);
     expect(actions).toEqual(
       expect.arrayContaining(['dynamodb:Query', 'dynamodb:PutItem', 's3:PutObject']),
     );
-    expect(actions.some((action) => /^s3:(Get|Delete)/.test(action))).toBe(false);
+    const s3 = (action: string) =>
+      JSON.stringify(statements.filter((statement) => statement.Action === action));
+    expect(s3('s3:GetObject')).toContain('/users/*/cover.*');
+    expect(s3('s3:DeleteObject')).toContain('/users/*/books/*');
+    expect(statements).toContainEqual(
+      expect.objectContaining({
+        Action: 's3:ListBucket',
+        Condition: { StringLike: { 's3:prefix': 'users/*' } },
+      }),
+    );
+    expect(
+      actions.filter((action) => /^s3:(Get|Delete|List)/.test(action)).sort(),
+    ).toEqual(['s3:DeleteObject', 's3:GetObject', 's3:ListBucket']);
   });
 
   it('grants metadata table writes, EPUB reads and cover puts only', () => {
@@ -176,8 +190,18 @@ describe('ServerlessStack', () => {
     });
   });
 
-  it.each(['GET /books', 'POST /uploads'])('protects %s with the authorizer', (routeKey) => {
-    template.resourceCountIs('AWS::ApiGatewayV2::Route', 2);
+  it.each([
+    'GET /books',
+    'GET /books/{id}',
+    'PATCH /books/{id}',
+    'DELETE /books/{id}',
+    'POST /books/{id}/kindle',
+    'POST /uploads',
+    'GET /settings',
+    'PUT /settings',
+    'GET /authors',
+  ])('protects %s with the authorizer', (routeKey) => {
+    template.resourceCountIs('AWS::ApiGatewayV2::Route', 9);
     template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
       RouteKey: routeKey,
       AuthorizationType: 'JWT',
@@ -190,7 +214,7 @@ describe('ServerlessStack', () => {
       ProtocolType: 'HTTP',
       CorsConfiguration: {
         AllowOrigins: corsOrigins,
-        AllowMethods: ['GET', 'POST', 'PATCH', 'DELETE'],
+        AllowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
         AllowHeaders: ['authorization', 'content-type'],
       },
     });
