@@ -52,6 +52,7 @@ export class StorageStack extends Stack {
       ],
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      eventBridgeEnabled: true,
     });
 
     new CfnOutput(this, 'TableName', { value: this.table.tableName });

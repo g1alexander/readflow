@@ -4,9 +4,13 @@ import { HttpJwtAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import type { IUserPoolClient, UserPool } from 'aws-cdk-lib/aws-cognito';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { Rule } from 'aws-cdk-lib/aws-events';
+import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { Architecture, Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { SqsDestination } from 'aws-cdk-lib/aws-lambda-destinations';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import type { IBucket } from 'aws-cdk-lib/aws-s3';
+import { Queue } from 'aws-cdk-lib/aws-sqs';
 import type { Construct } from 'constructs';
 import { join } from 'node:path';
 import { getCorsOrigins } from '../context.js';
@@ -24,6 +28,14 @@ export class ServerlessStack extends Stack {
   constructor(scope: Construct, id: string, props: ServerlessStackProps) {
     super(scope, id, props);
 
+    const code = Code.fromAsset(join(__dirname, '../../../serverless/src'), {
+      exclude: ['**/__pycache__'],
+    });
+    const environment = {
+      TABLE_NAME: props.table.tableName,
+      BUCKET_NAME: props.bucket.bucketName,
+    };
+
     const logGroup = new LogGroup(this, 'ApiFunctionLogs', {
       retention: RetentionDays.ONE_WEEK,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -32,20 +44,53 @@ export class ServerlessStack extends Stack {
     const apiFunction = new Function(this, 'ApiFunction', {
       runtime: Runtime.PYTHON_3_13,
       architecture: Architecture.ARM_64,
-      code: Code.fromAsset(join(__dirname, '../../../serverless/src'), {
-        exclude: ['**/__pycache__'],
-      }),
+      code,
       handler: 'api.handler.handler',
       memorySize: 256,
       timeout: Duration.seconds(10),
-      environment: {
-        TABLE_NAME: props.table.tableName,
-        BUCKET_NAME: props.bucket.bucketName,
-      },
+      environment,
       logGroup,
     });
     props.table.grantReadWriteData(apiFunction);
     props.bucket.grantPut(apiFunction);
+
+    const metadataFailures = new Queue(this, 'MetadataFailures', {
+      queueName: 'readflow-metadata-failures',
+      retentionPeriod: Duration.days(14),
+      enforceSSL: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    const metadataFunction = new Function(this, 'MetadataFunction', {
+      runtime: Runtime.PYTHON_3_13,
+      architecture: Architecture.ARM_64,
+      code,
+      handler: 'metadata.handler.handler',
+      memorySize: 512,
+      timeout: Duration.seconds(60),
+      environment,
+      logGroup: new LogGroup(this, 'MetadataFunctionLogs', {
+        retention: RetentionDays.ONE_WEEK,
+        removalPolicy: RemovalPolicy.DESTROY,
+      }),
+      retryAttempts: 2,
+      onFailure: new SqsDestination(metadataFailures),
+    });
+    props.table.grantWriteData(metadataFunction);
+    props.bucket.grantRead(metadataFunction, 'users/*/book.epub');
+    props.bucket.grantPut(metadataFunction, 'users/*/cover.*');
+
+    new Rule(this, 'EpubUploaded', {
+      eventPattern: {
+        source: ['aws.s3'],
+        detailType: ['Object Created'],
+        detail: {
+          bucket: { name: [props.bucket.bucketName] },
+          object: { key: [{ wildcard: 'users/*/books/*/book.epub' }] },
+        },
+      },
+      targets: [new LambdaFunction(metadataFunction)],
+    });
 
     const api = new HttpApi(this, 'HttpApi', {
       createDefaultStage: false,

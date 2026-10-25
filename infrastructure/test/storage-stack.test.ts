@@ -90,6 +90,12 @@ describe('StorageStack', () => {
     });
   });
 
+  it('sends bucket events to EventBridge', () => {
+    template.hasResourceProperties('Custom::S3BucketNotifications', {
+      NotificationConfiguration: { EventBridgeConfiguration: {} },
+    });
+  });
+
   it('deletes the bucket and its objects when the stack is destroyed', () => {
     template.hasResource('AWS::S3::Bucket', {
       DeletionPolicy: 'Delete',

@@ -29,7 +29,7 @@ describe('ServerlessStack', () => {
   });
 
   it('runs the api Lambda on Python 3.13 arm64 with the table and bucket names', () => {
-    template.resourceCountIs('AWS::Lambda::Function', 1);
+    template.resourceCountIs('AWS::Lambda::Function', 2);
     template.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'python3.13',
       Architectures: ['arm64'],
@@ -44,23 +44,108 @@ describe('ServerlessStack', () => {
     });
   });
 
+  it('runs the metadata Lambda with 512 MB and 60 s', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Runtime: 'python3.13',
+      Architectures: ['arm64'],
+      Handler: 'metadata.handler.handler',
+      MemorySize: 512,
+      Timeout: 60,
+      Environment: {
+        Variables: {
+          TABLE_NAME: { 'Fn::ImportValue': Match.anyValue() },
+          BUCKET_NAME: { 'Fn::ImportValue': Match.anyValue() },
+        },
+      },
+      LoggingConfig: { LogGroup: { Ref: Match.stringLikeRegexp('MetadataFunctionLogs') } },
+    });
+  });
+
   it('keeps the Lambda logs one week and deletes them with the stack', () => {
-    template.hasResourceProperties('AWS::Logs::LogGroup', { RetentionInDays: 7 });
-    template.hasResource('AWS::Logs::LogGroup', {
+    template.resourceCountIs('AWS::Logs::LogGroup', 2);
+    template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 7 });
+    template.allResources('AWS::Logs::LogGroup', {
       DeletionPolicy: 'Delete',
       UpdateReplacePolicy: 'Delete',
     });
   });
 
-  it('grants table read/write and S3 put, without S3 read or delete', () => {
-    const [policy] = Object.values(template.findResources('AWS::IAM::Policy'));
-    const actions: string[] = policy.Properties.PolicyDocument.Statement.flatMap(
-      (statement: { Action: string | string[] }) => statement.Action,
+  function statementsOf(role: string) {
+    const [policy] = Object.values(template.findResources('AWS::IAM::Policy')).filter(
+      (resource) => resource.Properties.Roles[0].Ref.startsWith(role),
     );
+    return policy.Properties.PolicyDocument.Statement as {
+      Action: string | string[];
+      Resource: unknown;
+    }[];
+  }
+
+  function actionsOf(role: string) {
+    return statementsOf(role).flatMap((statement) => statement.Action);
+  }
+
+  it('grants the api table read/write and S3 put, without S3 read or delete', () => {
+    const actions = actionsOf('ApiFunctionServiceRole');
     expect(actions).toEqual(
       expect.arrayContaining(['dynamodb:Query', 'dynamodb:PutItem', 's3:PutObject']),
     );
     expect(actions.some((action) => /^s3:(Get|Delete)/.test(action))).toBe(false);
+  });
+
+  it('grants metadata table writes, EPUB reads and cover puts only', () => {
+    const actions = actionsOf('MetadataFunctionServiceRole');
+    expect(actions).toEqual(
+      expect.arrayContaining([
+        'dynamodb:PutItem',
+        'dynamodb:UpdateItem',
+        's3:GetObject*',
+        's3:PutObject',
+        'sqs:SendMessage',
+      ]),
+    );
+    expect(actions.some((action) => /^(dynamodb:(Query|Scan)|s3:Delete)/.test(action))).toBe(
+      false,
+    );
+    const s3Resources = JSON.stringify(
+      statementsOf('MetadataFunctionServiceRole').filter((statement) =>
+        [statement.Action].flat().some((action) => action.startsWith('s3:')),
+      ),
+    );
+    expect(s3Resources).toContain('/users/*/book.epub');
+    expect(s3Resources).toContain('/users/*/cover.*');
+  });
+
+  it('sends failed metadata events to SQS after 2 retries', () => {
+    template.hasResourceProperties('AWS::SQS::Queue', {
+      QueueName: 'readflow-metadata-failures',
+      MessageRetentionPeriod: 1209600,
+    });
+    template.hasResource('AWS::SQS::Queue', { DeletionPolicy: 'Delete' });
+    template.hasResourceProperties('AWS::Lambda::EventInvokeConfig', {
+      FunctionName: { Ref: Match.stringLikeRegexp('MetadataFunction') },
+      MaximumRetryAttempts: 2,
+      DestinationConfig: {
+        OnFailure: {
+          Destination: { 'Fn::GetAtt': [Match.stringLikeRegexp('MetadataFailures'), 'Arn'] },
+        },
+      },
+    });
+  });
+
+  it('triggers the metadata Lambda on EPUB uploads', () => {
+    template.hasResourceProperties('AWS::Events::Rule', {
+      EventPattern: {
+        source: ['aws.s3'],
+        'detail-type': ['Object Created'],
+        detail: {
+          bucket: { name: [{ 'Fn::ImportValue': Match.anyValue() }] },
+          object: { key: [{ wildcard: 'users/*/books/*/book.epub' }] },
+        },
+      },
+      Targets: [
+        { Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('MetadataFunction'), 'Arn'] } },
+      ],
+    });
   });
 
   it('validates Cognito access tokens with a JWT authorizer', () => {
