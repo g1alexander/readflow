@@ -6,12 +6,14 @@ import type { IUserPoolClient, UserPool } from 'aws-cdk-lib/aws-cognito';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Architecture, Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+import type { IBucket } from 'aws-cdk-lib/aws-s3';
 import type { Construct } from 'constructs';
 import { join } from 'node:path';
 import { getCorsOrigins } from '../context.js';
 
 export interface ServerlessStackProps extends StackProps {
   table: ITable;
+  bucket: IBucket;
   userPool: UserPool;
   userPoolClient: IUserPoolClient;
 }
@@ -36,10 +38,14 @@ export class ServerlessStack extends Stack {
       handler: 'api.handler.handler',
       memorySize: 256,
       timeout: Duration.seconds(10),
-      environment: { TABLE_NAME: props.table.tableName },
+      environment: {
+        TABLE_NAME: props.table.tableName,
+        BUCKET_NAME: props.bucket.bucketName,
+      },
       logGroup,
     });
-    props.table.grantReadData(apiFunction);
+    props.table.grantReadWriteData(apiFunction);
+    props.bucket.grantPut(apiFunction);
 
     const api = new HttpApi(this, 'HttpApi', {
       createDefaultStage: false,
@@ -69,6 +75,13 @@ export class ServerlessStack extends Stack {
     api.addRoutes({
       path: '/books',
       methods: [HttpMethod.GET],
+      integration,
+      authorizer,
+    });
+
+    api.addRoutes({
+      path: '/uploads',
+      methods: [HttpMethod.POST],
       integration,
       authorizer,
     });

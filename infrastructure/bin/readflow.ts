@@ -22,6 +22,7 @@ const auth = new AuthStack(app, 'ReadflowAuth', { env });
 const serverless = new ServerlessStack(app, 'ReadflowServerless', {
   env,
   table: storage.table,
+  bucket: storage.bucket,
   userPool: auth.userPool,
   userPoolClient: auth.userPoolClient,
 });

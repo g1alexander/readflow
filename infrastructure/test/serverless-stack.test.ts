@@ -14,6 +14,7 @@ function createServerless(app: App, id: string) {
   return new ServerlessStack(app, id, {
     env,
     table: storage.table,
+    bucket: storage.bucket,
     userPool: auth.userPool,
     userPoolClient: auth.userPoolClient,
   });
@@ -27,13 +28,18 @@ describe('ServerlessStack', () => {
     template = Template.fromStack(createServerless(app, 'TestServerless'));
   });
 
-  it('runs the api Lambda on Python 3.13 arm64 with the table name', () => {
+  it('runs the api Lambda on Python 3.13 arm64 with the table and bucket names', () => {
     template.resourceCountIs('AWS::Lambda::Function', 1);
     template.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'python3.13',
       Architectures: ['arm64'],
       Handler: 'api.handler.handler',
-      Environment: { Variables: { TABLE_NAME: { 'Fn::ImportValue': Match.anyValue() } } },
+      Environment: {
+        Variables: {
+          TABLE_NAME: { 'Fn::ImportValue': Match.anyValue() },
+          BUCKET_NAME: { 'Fn::ImportValue': Match.anyValue() },
+        },
+      },
       LoggingConfig: { LogGroup: { Ref: Match.stringLikeRegexp('ApiFunctionLogs') } },
     });
   });
@@ -46,13 +52,15 @@ describe('ServerlessStack', () => {
     });
   });
 
-  it('grants read-only access to the table', () => {
+  it('grants table read/write and S3 put, without S3 read or delete', () => {
     const [policy] = Object.values(template.findResources('AWS::IAM::Policy'));
     const actions: string[] = policy.Properties.PolicyDocument.Statement.flatMap(
       (statement: { Action: string | string[] }) => statement.Action,
     );
-    expect(actions).toContain('dynamodb:Query');
-    expect(actions.some((action) => /Put|Update|Delete|Write/.test(action))).toBe(false);
+    expect(actions).toEqual(
+      expect.arrayContaining(['dynamodb:Query', 'dynamodb:PutItem', 's3:PutObject']),
+    );
+    expect(actions.some((action) => /^s3:(Get|Delete)/.test(action))).toBe(false);
   });
 
   it('validates Cognito access tokens with a JWT authorizer', () => {
@@ -66,10 +74,10 @@ describe('ServerlessStack', () => {
     });
   });
 
-  it('protects GET /books with the authorizer', () => {
-    template.resourceCountIs('AWS::ApiGatewayV2::Route', 1);
+  it.each(['GET /books', 'POST /uploads'])('protects %s with the authorizer', (routeKey) => {
+    template.resourceCountIs('AWS::ApiGatewayV2::Route', 2);
     template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
-      RouteKey: 'GET /books',
+      RouteKey: routeKey,
       AuthorizationType: 'JWT',
       AuthorizerId: { Ref: Match.stringLikeRegexp('CognitoAuthorizer') },
     });
