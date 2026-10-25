@@ -34,6 +34,13 @@ export async function hasSession(): Promise<boolean> {
   }
 }
 
+export async function accessToken(): Promise<string> {
+  const { tokens } = await fetchAuthSession();
+  const token = tokens?.accessToken?.toString();
+  if (!token) throw new Error('No session');
+  return token;
+}
+
 export async function logout() {
   await signOut();
   window.location.replace('/');

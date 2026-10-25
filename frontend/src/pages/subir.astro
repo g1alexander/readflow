@@ -28,9 +28,8 @@ import { btn, PAGE_TITLE, SUBTITLE } from '../scripts/ui';
     </div>
 
     <Panel id="queue" titleId="queue-title" hidden>
-      <span slot="head" class={`${SUBTITLE} text-[13px]`}>Revisa el estado inicial de cada libro.</span>
+      <span slot="head" class={`${SUBTITLE} text-[13px]`}>Se agregan a To Read.</span>
       <div id="queue-list"></div>
-      <p class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px] bg-reading-bg text-reading-ink text-[13px] font-medium" id="reading-hint" hidden><Icon name="mail" /> Los libros que guardes en Reading se enviarán a tu Kindle al instante.</p>
     </Panel>
 
     <div class="flex flex-wrap justify-end gap-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-20 max-md:px-5 max-md:pt-3.5 max-md:pb-[calc(18px+env(safe-area-inset-bottom,0px))] max-md:bg-canvas max-md:border-t max-md:border-line">
