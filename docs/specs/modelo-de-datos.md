@@ -40,13 +40,13 @@ BOOK#<ulid>     EVENT#<ulid>        EVENT
 | `status` | enum [status](#status) | sí | |
 | `type` | enum [type](#type) | no | |
 | `score` | number 1-5 | no | |
-| `year` | number | no | Año de publicación |
+| `year` | number | no | Año de publicación. La metadata toma los 4 primeros dígitos del primer `dc:date`; si no calzan, queda ausente |
 | `epubKey` | string | sí | Key S3 del EPUB |
 | `epubFileName` | string | sí | Nombre original del archivo |
 | `epubSize` | number | no | Bytes; lo escribe la metadata (viene en el evento S3) |
-| `coverKey` | string | no | Key S3 de la portada; ausente si el EPUB no trae portada |
+| `coverKey` | string | no | Key S3 de la portada: `users/<sub>/books/<id>/cover.<ext>`. Ver [Portada](#portada) |
 | `ingest` | `pending` \| `ready` \| `failed` | sí | Ver [Ciclo de vida](#ciclo-de-vida-de-ingest) |
-| `ingestError` | string | no | Solo con `ingest=failed`; mensaje corto, sin el payload |
+| `ingestError` | string | no | Solo con `ingest=failed`; mensaje corto, sin el payload. Valores: `not a zip file`, `invalid XML`, `missing META-INF/container.xml`, `missing OPF rootfile`, `missing OPF`, `missing OPF metadata`, `metadata file too large` (XML > 5 MB), `unreadable zip entry` (entrada cifrada, compresión no soportada o truncada) |
 | `kindle` | map | no | Ausente = nunca pedido. Ver abajo |
 | `createdAt` | string ISO | sí | |
 | `updatedAt` | string ISO | sí | Se actualiza en cada escritura |
@@ -88,7 +88,7 @@ El historial del libro vive en su propia partición, así que el Query del table
 | `entity` | `"EVENT"` | |
 | `bookId` | string | |
 | `kind` | enum | `uploaded`, `ingest_ready`, `ingest_failed`, `status_changed`, `kindle_requested`, `kindle_sent`, `kindle_failed` |
-| `data` | map | Depende de `kind`; p. ej. `uploaded` → `{fileName, size}`, `status_changed` → `{from, to}` |
+| `data` | map | Depende de `kind`: `uploaded` → `{fileName, size}`, `ingest_ready` → `{}`, `ingest_failed` → `{error}` (igual a `ingestError`), `status_changed` → `{from, to}` |
 | `at` | string ISO | |
 
 El texto que muestra el timeline lo arma el front a partir de `kind` + `data`.
@@ -109,7 +109,7 @@ El texto que muestra el timeline lo arma el front a partir de `kind` + `data`.
 | 2 | Detalle de un libro | API | En paralelo: `GetItem USER#<sub> / BOOK#<id>` y `Query PK=BOOK#<id> AND begins_with(SK, "EVENT#")`, `ScanIndexForward=false`. Si el GetItem no devuelve nada → 404 sin leer eventos (esa lectura es la verificación de dueño) |
 | 3 | Autocompletar autores | API | `Query PK=USER#<sub> AND begins_with(SK, "AUTHOR#")` |
 | 4 | Crear libro (`POST /uploads`) | API | `TransactWriteItems`: Put Book (`status=toread`, `ingest=pending`, `attribute_not_exists(PK)`) + Put Event `uploaded`. El body no trae `status`: todo libro nace en `toread` y el envío a Kindle solo sale del patrón #6. Devuelve la presigned URL de `epubKey` |
-| 5 | Guardar metadata | Lambda metadata | Saca `<sub>` e `<id>` de la key S3. Put condicional por cada autor (§Author). `TransactWriteItems`: Update Book (`name`, `authors`, `year`, `coverKey`, `epubSize`, `ingest=ready`, condición `ingest = pending`) + Put Event `ingest_ready`. Si falla: `ingest=failed` + `ingestError` + Event `ingest_failed` |
+| 5 | Guardar metadata | Lambda metadata | Saca `<sub>` e `<id>` de la key S3. Put condicional por cada autor (§Author). `TransactWriteItems`: Update Book (`name`, `authors`, `year`, `coverKey`, `epubSize`, `ingest=ready`, condición `ingest = pending`) + Put Event `ingest_ready`. Si el EPUB es inválido: `epubSize`, `ingest=failed` + `ingestError` + Event `ingest_failed` (misma condición). Otros errores no tocan el libro: van a la cola de fallos |
 | 6 | Cambiar estado | API | `TransactWriteItems`: Update `status` (+ `kindle.requestedAt=now`, `kindle.status=sending` si pasa a `reading` desde otro estado) + Put Event `status_changed` (+ `kindle_requested`) |
 | 7 | Reenviar a Kindle | API | `TransactWriteItems`: Update `kindle.requestedAt=now`, `kindle.status=sending` + Put Event `kindle_requested` |
 | 8 | Editar campos (`name`, `authors`, `type`, `score`, `year`) | API | `UpdateItem` con `attribute_exists(PK)`. Autores nuevos: Put condicional antes |
@@ -129,6 +129,17 @@ POST /uploads ──► pending ──(metadata OK)──► ready
 - El item existe desde que se pide la presigned URL: si el evento S3 se pierde, el libro queda visible como `pending` y no desaparece en silencio.
 - La condición `ingest = pending` en #5 evita que un reintento de la Lambda pise ediciones posteriores del usuario.
 - Un libro `pending` cuyo EPUB nunca llegó a S3 se queda así; limpiarlo queda fuera de esta spec.
+- `failed` es solo para EPUBs inválidos. Los errores de infraestructura o de código no marcan el libro: se reintentan y terminan en la cola `readflow-metadata-failures` ([ADR 0009](../adr/0009-lambda-metadata-eventbridge-parser-stdlib.md)).
+
+### Metadata extraída
+
+- `name`: `dc:title` con espacios normalizados. Si falta o está vacío, se mantiene el nombre del upload y el libro igual queda `ready`.
+- `authors`: cada `dc:creator` no vacío, deduplicado por slug. Si el autor ya existe, se usa su `name` canónico. Un creator con slug vacío se descarta.
+- `epubSize`: `detail.object.size` del evento S3.
+
+### Portada
+
+Se busca el item del manifest con `properties="cover-image"` (EPUB3) y, si no hay, el que referencia `<meta name="cover" content="<id>">` (EPUB2). Se sube tal cual a `cover.<ext>` según `media-type`: `image/jpeg` → `jpg`, `image/png` → `png`, `image/gif` → `gif`, `image/webp` → `webp`. Con otro media-type, si el archivo no está en el zip o si pesa más de 10 MB, no hay `coverKey` y el libro igual queda `ready`.
 
 ## Contrato del Stream (Lambda de envío a Kindle)
 
