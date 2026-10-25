@@ -164,7 +164,11 @@ export async function initBoard() {
   onChange(render);
   render();
   getSettings()
-    .then((s) => { $('#kindle-email').textContent = s.kindleEmail ?? 'Configura tu correo en Ajustes'; })
+    .then((s) => {
+      $('#kindle-card').dataset.state = s.kindleEmail ? 'reading' : 'onhold';
+      $('#kindle-status').textContent = s.kindleEmail ? 'Kindle conectado' : 'Kindle sin configurar';
+      $('#kindle-email').textContent = s.kindleEmail ?? 'Agrega tu correo en Ajustes';
+    })
     .catch(showError);
   try {
     books = await load();

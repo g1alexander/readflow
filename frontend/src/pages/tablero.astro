@@ -22,10 +22,10 @@ const hint = 'flex items-center gap-2.5 px-3.5 bg-reading-bg text-reading-ink te
           </span>
         ))}
       </nav>
-      <div class="mt-auto bg-reading-bg rounded-2xl p-4 flex flex-col gap-1.5 text-[#2F5A47] text-[13px]">
-        <strong class="flex items-center gap-2 text-reading-ink text-sm"><span class="size-2 rounded-full bg-[#3E9B70]"></span>Kindle conectado</strong>
-        <a class="break-all text-[#2F5A47] hover:text-reading-ink" href="/ajustes" id="kindle-email"></a>
-        <small class="text-xs text-[#3D5F50]" id="kindle-last"></small>
+      <div class="mt-auto bg-s-bg rounded-2xl p-4 flex flex-col gap-1.5 text-s-ink text-[13px]" data-state="toread" id="kindle-card">
+        <strong class="flex items-center gap-2 text-s-ink text-sm"><span class="size-2 rounded-full bg-s-dot"></span><span id="kindle-status">Kindle</span></strong>
+        <a class="break-all text-s-ink opacity-90 hover:opacity-100" href="/ajustes" id="kindle-email"></a>
+        <small class="text-xs text-s-ink opacity-80" id="kindle-last"></small>
       </div>
       <button class={`${btn('ghost')} justify-start`} type="button" data-logout><Icon name="logout" /> Cerrar sesión</button>
     </aside>
