@@ -8,7 +8,7 @@ from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 
 from api.errors import InvalidRequest
-from api.ulid import new_ulid
+from common.ulid import new_ulid
 
 MAX_SIZE = 100 * 1024 * 1024
 MAX_FILE_NAME = 255

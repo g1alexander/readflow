@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from api import ulid
+from common import ulid
 
 
 def test_is_26_crockford_chars():
