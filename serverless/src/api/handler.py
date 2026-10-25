@@ -1,15 +1,31 @@
+import base64
 import json
 import logging
 from decimal import Decimal
 
-from api.routes import books
+from api.errors import InvalidRequest
+from api.routes import books, uploads
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 ROUTES = {
-    "GET /books": lambda sub, event: {"books": books.list_books(sub)},
+    "GET /books": lambda sub, event: (200, {"books": books.list_books(sub)}),
+    "POST /uploads": lambda sub, event: (201, uploads.create_upload(sub, _json_body(event))),
 }
+
+
+def _json_body(event) -> dict:
+    try:
+        raw = event.get("body") or ""
+        if event.get("isBase64Encoded"):
+            raw = base64.b64decode(raw)
+        body = json.loads(raw)
+    except ValueError as e:
+        raise InvalidRequest("Body must be JSON") from e
+    if not isinstance(body, dict):
+        raise InvalidRequest("Body must be a JSON object")
+    return body
 
 
 def _default(value):
@@ -42,7 +58,10 @@ def handler(event, context):
         return _error(404, "not_found", "Route not found")
 
     try:
-        return _response(200, route(sub, event))
+        status, body = route(sub, event)
+    except InvalidRequest as e:
+        return _error(400, "invalid_request", str(e))
     except Exception:
         logger.exception("Unhandled error in %s", route_key)
         return _error(500, "internal", "Internal error")
+    return _response(status, body)

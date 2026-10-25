@@ -1,8 +1,12 @@
+import base64
 import json
 from decimal import Decimal
 from unittest.mock import patch
 
+import pytest
+
 from api import handler
+from api.errors import InvalidRequest
 
 
 def _event(route_key="GET /books", sub="u1"):
@@ -54,3 +58,46 @@ def test_unhandled_error_is_internal_without_details():
 
     assert response["statusCode"] == 500
     assert _body(response) == {"error": {"code": "internal", "message": "Internal error"}}
+
+
+def _post(body, **extra):
+    return {**_event("POST /uploads"), "body": body, **extra}
+
+
+def test_post_uploads_creates_the_book():
+    created = {"book": {"id": "a"}, "upload": {"url": "https://signed"}}
+    with patch.object(handler.uploads, "create_upload", return_value=created) as create_upload:
+        response = handler.handler(_post('{"fileName": "a.epub", "size": 1}'), None)
+
+    create_upload.assert_called_once_with("u1", {"fileName": "a.epub", "size": 1})
+    assert response["statusCode"] == 201
+    assert _body(response) == created
+
+
+def test_decodes_base64_bodies():
+    raw = base64.b64encode(b'{"fileName": "a.epub", "size": 1}').decode()
+    with patch.object(handler.uploads, "create_upload", return_value={}) as create_upload:
+        handler.handler(_post(raw, isBase64Encoded=True), None)
+
+    create_upload.assert_called_once_with("u1", {"fileName": "a.epub", "size": 1})
+
+
+@pytest.mark.parametrize("body", [None, "", "not json", "[1]"])
+def test_bad_body_is_invalid_request(body):
+    with patch.object(handler.uploads, "create_upload") as create_upload:
+        response = handler.handler(_post(body), None)
+
+    create_upload.assert_not_called()
+    assert response["statusCode"] == 400
+    assert _body(response)["error"]["code"] == "invalid_request"
+
+
+def test_validation_error_is_invalid_request():
+    error = InvalidRequest("size must be an integer")
+    with patch.object(handler.uploads, "create_upload", side_effect=error):
+        response = handler.handler(_post('{"fileName": "a.epub"}'), None)
+
+    assert response["statusCode"] == 400
+    assert _body(response) == {
+        "error": {"code": "invalid_request", "message": "size must be an integer"}
+    }
