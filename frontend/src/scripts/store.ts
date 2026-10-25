@@ -1,3 +1,4 @@
+import { listBooks } from './api';
 import { toast } from './ui';
 
 export const STATES = [
@@ -25,6 +26,8 @@ export interface Book {
   added: string;
   history: { at: string; text: string }[];
   kindle: { status: 'sending' | 'delivered'; at: string } | null;
+  ingest?: 'pending' | 'ready' | 'failed';
+  ingestError?: string;
 }
 
 const COVER_COLORS: [string, string][] = [
@@ -163,4 +166,41 @@ export function resumePending() {
       notify();
     }, 2500);
   });
+}
+
+const POLL_MS = 3000;
+const POLL_LIMIT_MS = 2 * 60 * 1000;
+let polling = false;
+
+export async function pollIngest() {
+  if (polling) return;
+  polling = true;
+  const until = Date.now() + POLL_LIMIT_MS;
+  while (books.some((b) => b.ingest === 'pending') && Date.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+    try {
+      const fresh = new Map((await listBooks()).books.map((b) => [b.id, b]));
+      let changed = false;
+      for (const book of books) {
+        const b = fresh.get(book.id);
+        if (book.ingest !== 'pending' || !b || b.ingest === 'pending') continue;
+        const at = b.updatedAt;
+        book.ingest = b.ingest;
+        if (b.ingest === 'ready') {
+          book.title = b.name;
+          book.author = b.authors.map((a) => a.name).join(', ') || 'Autor desconocido';
+          book.file.size = b.epubSize ?? book.file.size;
+          book.history.push({ at, text: 'Metadata extraída del EPUB' });
+        } else {
+          book.ingestError = b.ingestError;
+          book.history.push({ at, text: 'No se pudo leer el EPUB: ' + (b.ingestError ?? 'error desconocido') });
+        }
+        changed = true;
+      }
+      if (changed) { save(); notify(); }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  polling = false;
 }

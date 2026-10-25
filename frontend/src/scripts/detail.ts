@@ -1,4 +1,4 @@
-import { STATES, isState, load, getBook, moveBook, sendToKindle, onChange, resumePending, type Book } from './store';
+import { STATES, isState, load, getBook, moveBook, sendToKindle, onChange, pollIngest, resumePending, type Book } from './store';
 import { $, esc, icon, coverHTML, fmtDate, fmtDateTime, fmtSize, pill, toast, ICON_SM, STATE_BTN } from './ui';
 
 const markdown = (b: Book) => `---
@@ -69,4 +69,5 @@ export function initDetail() {
   onChange(render);
   render();
   resumePending();
+  pollIngest();
 }

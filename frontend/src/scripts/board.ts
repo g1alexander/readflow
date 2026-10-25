@@ -1,4 +1,4 @@
-import { STATES, isState, load, getBook, moveBook, onChange, resumePending, type Book, type StateId } from './store';
+import { STATES, isState, load, getBook, moveBook, onChange, pollIngest, resumePending, type Book, type StateId } from './store';
 import { $, esc, icon, coverHTML, fmtDate, pill, ICON_SM, STATE_BTN } from './ui';
 
 const detailHref = (b: Book) => `/libro?id=${encodeURIComponent(b.id)}`;
@@ -10,8 +10,15 @@ function cardHTML(b: Book, mobile: boolean) {
     <span class="flex flex-col gap-[3px] min-w-0">
       <span class="font-semibold leading-[1.25] ${mobile ? 'text-sm' : 'text-[13px]'}">${esc(b.title)}</span>
       <span class="text-muted ${mobile ? 'text-[13px]' : 'text-xs'}">${esc(b.author)}</span>
+      ${ingestHTML(b)}
     </span>${mobile ? icon('chev', 'size-[18px] ml-auto text-[#8A85A0]') : ''}
   </a>`;
+}
+
+function ingestHTML(b: Book) {
+  if (b.ingest === 'pending') return `<span class="${pill('warn')}">${icon('clock', ICON_SM)}Procesando…</span>`;
+  if (b.ingest === 'failed') return `<span class="${pill('err')}">${esc(b.ingestError ?? 'Error al procesar')}</span>`;
+  return '';
 }
 
 function kindleStatusHTML(b: Book) {
@@ -155,4 +162,5 @@ export function initBoard() {
   onChange(render);
   render();
   resumePending();
+  pollIngest();
 }

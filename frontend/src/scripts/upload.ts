@@ -21,7 +21,7 @@ const toBook = (b: ApiBook, size: number): Book => {
     id: b.id, title: b.name, author: b.authors.map((a) => a.name).join(', ') || 'Autor desconocido', state: b.status, bg, ink, cover: null,
     file: { name: b.epubFileName, size },
     added: b.createdAt, history: [{ at: b.createdAt, text: 'Agregado a la biblioteca en ' + stateName(b.status) }],
-    kindle: null,
+    kindle: null, ingest: b.ingest,
   };
 };
 

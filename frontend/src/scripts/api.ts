@@ -7,6 +7,8 @@ export interface ApiBook {
   authors: { id: string; name: string }[];
   status: StateId;
   ingest: 'pending' | 'ready' | 'failed';
+  ingestError?: string;
+  epubSize?: number;
   epubKey: string;
   epubFileName: string;
   createdAt: string;
@@ -36,6 +38,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   if (!res.ok) throw new ApiError(res.status, data?.error?.code ?? 'http', data?.error?.message ?? res.statusText);
   return data as T;
 }
+
+export const listBooks = () => request<{ books: ApiBook[] }>('GET', '/books');
 
 export const createUpload = (file: File) =>
   request<{ book: ApiBook; upload: Upload }>('POST', '/uploads', { fileName: file.name, size: file.size });
