@@ -88,7 +88,7 @@ El historial del libro vive en su propia partición, así que el Query del table
 | `entity` | `"EVENT"` | |
 | `bookId` | string | |
 | `kind` | enum | `uploaded`, `ingest_ready`, `ingest_failed`, `status_changed`, `kindle_requested`, `kindle_sent`, `kindle_failed` |
-| `data` | map | Depende de `kind`; p. ej. `status_changed` → `{from, to}` |
+| `data` | map | Depende de `kind`; p. ej. `uploaded` → `{fileName, size}`, `status_changed` → `{from, to}` |
 | `at` | string ISO | |
 
 El texto que muestra el timeline lo arma el front a partir de `kind` + `data`.
@@ -108,7 +108,7 @@ El texto que muestra el timeline lo arma el front a partir de `kind` + `data`.
 | 1 | Tablero: todos mis libros | API | `Query PK=USER#<sub> AND begins_with(SK, "BOOK#")`. Paginar con `LastEvaluatedKey` (1 MB por página) hasta agotar. El front agrupa por `status` |
 | 2 | Detalle de un libro | API | En paralelo: `GetItem USER#<sub> / BOOK#<id>` y `Query PK=BOOK#<id> AND begins_with(SK, "EVENT#")`, `ScanIndexForward=false`. Si el GetItem no devuelve nada → 404 sin leer eventos (esa lectura es la verificación de dueño) |
 | 3 | Autocompletar autores | API | `Query PK=USER#<sub> AND begins_with(SK, "AUTHOR#")` |
-| 4 | Crear libro (`POST /uploads`) | API | `TransactWriteItems`: Put Book (`ingest=pending`, `attribute_not_exists(PK)`) + Put Event `uploaded`. Si `status=reading`, el Book nace con `kindle.requestedAt` y `kindle.status=sending`. Devuelve la presigned URL de `epubKey` |
+| 4 | Crear libro (`POST /uploads`) | API | `TransactWriteItems`: Put Book (`status=toread`, `ingest=pending`, `attribute_not_exists(PK)`) + Put Event `uploaded`. El body no trae `status`: todo libro nace en `toread` y el envío a Kindle solo sale del patrón #6. Devuelve la presigned URL de `epubKey` |
 | 5 | Guardar metadata | Lambda metadata | Saca `<sub>` e `<id>` de la key S3. Put condicional por cada autor (§Author). `TransactWriteItems`: Update Book (`name`, `authors`, `year`, `coverKey`, `epubSize`, `ingest=ready`, condición `ingest = pending`) + Put Event `ingest_ready`. Si falla: `ingest=failed` + `ingestError` + Event `ingest_failed` |
 | 6 | Cambiar estado | API | `TransactWriteItems`: Update `status` (+ `kindle.requestedAt=now`, `kindle.status=sending` si pasa a `reading` desde otro estado) + Put Event `status_changed` (+ `kindle_requested`) |
 | 7 | Reenviar a Kindle | API | `TransactWriteItems`: Update `kindle.requestedAt=now`, `kindle.status=sending` + Put Event `kindle_requested` |
@@ -150,7 +150,7 @@ Hay un solo Stream, que ve todas las escrituras de la tabla. Filtro de la event 
 El filtro no puede comparar la imagen vieja con la nueva, así que la Lambda decide en código. Envía solo si se cumple alguna de estas condiciones:
 
 - `New.kindle.requestedAt != Old.kindle.requestedAt` (pedido nuevo), o
-- `Old.ingest != "ready"` (pedido hecho mientras el EPUB se procesaba: libro subido directo a `reading`).
+- `Old.ingest != "ready"` (pedido hecho mientras el EPUB se procesaba: libro pasado a `reading` antes de que termine la metadata).
 
 Si no se cumple ninguna (p. ej. la Lambda acaba de escribir `kindle.status`, o el usuario editó el `score`), termina sin hacer nada.
 
