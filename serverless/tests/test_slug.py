@@ -1,6 +1,6 @@
 import pytest
 
-from metadata.slug import slugify
+from common.slug import slugify
 
 
 @pytest.mark.parametrize(

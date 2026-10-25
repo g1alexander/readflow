@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from api import handler
-from api.errors import InvalidRequest
+from api.errors import Conflict, InvalidRequest, NotFound
 
 
 def _event(route_key="GET /books", sub="u1"):
@@ -58,6 +58,86 @@ def test_unhandled_error_is_internal_without_details():
 
     assert response["statusCode"] == 500
     assert _body(response) == {"error": {"code": "internal", "message": "Internal error"}}
+
+
+def _book_event(route_key, book_id="b1", **extra):
+    return {**_event(route_key), "pathParameters": {"id": book_id}, **extra}
+
+
+def test_get_book_passes_the_path_id():
+    detail = {"book": {"id": "b1"}, "events": []}
+    with patch.object(handler.books, "get_book", return_value=detail) as get_book:
+        response = handler.handler(_book_event("GET /books/{id}"), None)
+
+    get_book.assert_called_once_with("u1", "b1")
+    assert response["statusCode"] == 200
+    assert _body(response) == detail
+
+
+def test_patch_book_returns_the_updated_book():
+    with patch.object(handler.books, "patch_book", return_value={"id": "b1"}) as patch_book:
+        response = handler.handler(
+            _book_event("PATCH /books/{id}", body='{"status": "finished"}'), None
+        )
+
+    patch_book.assert_called_once_with("u1", "b1", {"status": "finished"})
+    assert response["statusCode"] == 200
+    assert _body(response) == {"book": {"id": "b1"}}
+
+
+def test_resend_kindle_returns_the_book():
+    with patch.object(handler.books, "resend_kindle", return_value={"id": "b1"}) as resend:
+        response = handler.handler(_book_event("POST /books/{id}/kindle"), None)
+
+    resend.assert_called_once_with("u1", "b1")
+    assert _body(response) == {"book": {"id": "b1"}}
+
+
+def test_delete_book_is_no_content():
+    with patch.object(handler.books, "delete_book", return_value=None) as delete_book:
+        response = handler.handler(_book_event("DELETE /books/{id}"), None)
+
+    delete_book.assert_called_once_with("u1", "b1")
+    assert response == {"statusCode": 204}
+
+
+def test_settings_routes():
+    with (
+        patch.object(handler.settings, "get_settings", return_value={}) as get_settings,
+        patch.object(handler.settings, "put_settings", return_value={}) as put_settings,
+    ):
+        handler.handler(_event("GET /settings"), None)
+        handler.handler({**_event("PUT /settings"), "body": '{"kindleEmail": null}'}, None)
+
+    get_settings.assert_called_once_with("u1")
+    put_settings.assert_called_once_with("u1", {"kindleEmail": None})
+
+
+def test_get_authors():
+    authors = [{"id": "borges", "name": "Borges"}]
+    with patch.object(handler.authors, "list_authors", return_value=authors):
+        response = handler.handler(_event("GET /authors"), None)
+
+    assert _body(response) == {"authors": authors}
+
+
+def test_missing_book_is_not_found():
+    with patch.object(handler.books, "get_book", side_effect=NotFound("Book not found")):
+        response = handler.handler(_book_event("GET /books/{id}"), None)
+
+    assert response["statusCode"] == 404
+    assert _body(response) == {"error": {"code": "not_found", "message": "Book not found"}}
+
+
+def test_conflict_uses_its_code():
+    error = Conflict("kindle_email_missing", "Set a Kindle email")
+    with patch.object(handler.books, "resend_kindle", side_effect=error):
+        response = handler.handler(_book_event("POST /books/{id}/kindle"), None)
+
+    assert response["statusCode"] == 409
+    assert _body(response) == {
+        "error": {"code": "kindle_email_missing", "message": "Set a Kindle email"}
+    }
 
 
 def _post(body, **extra):

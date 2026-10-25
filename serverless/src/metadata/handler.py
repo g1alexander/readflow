@@ -8,9 +8,9 @@ import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.exceptions import ClientError
 
+from common.slug import slugify
 from common.ulid import new_ulid
 from metadata import epub
-from metadata.slug import slugify
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
