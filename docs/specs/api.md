@@ -162,7 +162,7 @@ Cambia el estado y/o edita campos (access patterns #6 y #8). Body parcial: solo 
 - Body vacío (`{}`), campo desconocido o valor inválido → `400 invalid_request`, sin escribir nada.
 - `authors` son nombres, no slugs. El servidor saca el slug, deduplica, crea el `AUTHOR#` que falte y, si ya existía, usa su nombre canónico. El libro guarda `[{id, name}]` en el orden recibido.
 - Cambio de `status` (distinto del actual): una transacción escribe los campos y el Event `status_changed` `{from, to}`. Si el nuevo estado es `reading`, además escribe `kindle = {requestedAt: now, status: "sending"}` y el Event `kindle_requested`.
-- Pasar a `reading` exige lo mismo que [reenviar](#post-booksidkindle): sin `kindleEmail` → `409 kindle_email_missing`; `ingest=failed` → `409 ingest_failed`. Con `ingest=pending` se acepta: el envío sale cuando la metadata pase el libro a `ready`.
+- Pasar a `reading` exige lo mismo que [reenviar](#post-booksidkindle): sin `kindleEmail` → `409 kindle_email_missing`; `ingest=failed` → `409 ingest_failed`. Con `ingest=pending` se acepta: el envío sale cuando la metadata pase el libro a `ready`; si la metadata falla, el envío queda `failed` con `kindle.error=ingest_failed` ([modelo](modelo-de-datos.md#access-patterns), #5).
 - `status` igual al actual no genera eventos ni pedido de envío.
 - Libro inexistente → `404 not_found`.
 

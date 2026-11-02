@@ -19,7 +19,8 @@ Webapp serverless personal de biblioteca y lectura (EPUB → Kindle). Monorepo: 
 
 - `frontend/src/scripts/`: lógica por página + `store.ts` (datos) y `auth.ts` (Cognito).
 - `serverless/src/api/`: Lambda `api`; `handler.py` despacha por `routeKey` a `routes/` ([ADR 0008](docs/adr/0008-http-api-una-lambda-con-router.md)). Se empaqueta `serverless/src` tal cual.
-- `serverless/src/metadata/`: Lambda `metadata` (EventBridge `Object Created` → parser EPUB stdlib → DynamoDB, [ADR 0009](docs/adr/0009-lambda-metadata-eventbridge-parser-stdlib.md)). `serverless/src/common/`: código compartido entre Lambdas.
+- `serverless/src/metadata/`: Lambda `metadata` (EventBridge `Object Created` → parser EPUB stdlib → DynamoDB, [ADR 0009](docs/adr/0009-lambda-metadata-eventbridge-parser-stdlib.md)).
+- `serverless/src/kindle/`: Lambda `kindle` (Stream DynamoDB → S3 → SES, [ADR 0010](docs/adr/0010-lambda-kindle-stream-idempotencia-fallos-como-estado.md)). `serverless/src/common/`: código compartido entre Lambdas.
 - `infrastructure/bin/readflow.ts`: instancia stacks y pasa outputs por props.
 - `infrastructure/lib/stacks/`: un stack por dominio ([ADR 0004](docs/adr/0004-stacks-cdk-por-dominio.md)).
 - `infrastructure/lib/constructs/`: piezas sin lógica de dominio.
