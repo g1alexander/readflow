@@ -28,7 +28,7 @@ Consola → **SES → Account dashboard → Request production access**, o:
 aws sesv2 put-account-details --region us-east-1 \
   --production-access-enabled \
   --mail-type TRANSACTIONAL \
-  --website-url https://main.<app-id>.amplifyapp.com \
+  --website-url https://readflow.chess-mentor.com \
   --contact-language EN \
   --use-case-description "<texto de abajo>"
 ```

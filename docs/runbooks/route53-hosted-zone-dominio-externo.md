@@ -1,6 +1,6 @@
 # Crear una hosted zone en Route 53 con el dominio en otro registrador
 
-Para cuando el dominio está comprado fuera de AWS (GoDaddy, Namecheap, Cloudflare…) y se quiere que su DNS lo maneje Route 53. En readflow se usa con `chess-mentor.com`, el dominio remitente de SES (ALE-11).
+Para cuando el dominio está comprado fuera de AWS (GoDaddy, Namecheap, Cloudflare…) y se quiere que su DNS lo maneje Route 53. En readflow se usa con `chess-mentor.com`: dominio remitente de SES (ALE-11) y dominio del front en Amplify (`readflow.chess-mentor.com`, ALE-30).
 
 La zona se crea a mano, fuera de CDK: así los nameservers no cambian aunque se destruya y recree un stack. CDK la importa con `HostedZone.fromLookup`.
 

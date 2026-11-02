@@ -44,7 +44,7 @@ Es solo una señal: no lleva el estado. El front pide el libro con `GET /books/{
 
 ## Comportamiento del front
 
-- Al iniciar sesión se suscribe a `/readflow/users/<sub>`.
-- Cada aviso → `GET /books/{id}` y refresco de la vista. Toasts de Kindle cuando `kindle.status` pasa de `sending` a `sent` o `failed`.
-- Al conectar o reconectar (`Connected` en el Hub `api`) → `GET /books` completo, para recuperar avisos perdidos.
+- Al cargar el tablero, la biblioteca o el detalle se suscribe a `/readflow/users/<sub>`.
+- Cada aviso → `GET /books/{id}` (en el detalle, solo los avisos de ese libro); la vista actualiza la card, agrega el libro arriba si cumple su filtro o lo quita si dejó de cumplirlo. Toasts de Kindle cuando `kindle.status` pasa de `sending` a `sent` o `failed`.
+- Al conectar o reconectar (`Connected` en el Hub `api`) → la vista repite sus consultas para recuperar avisos perdidos: tablero, `GET /books?status=toread&limit=5` + el resto de estados; biblioteca, primera página con sus filtros; detalle, `GET /books/{id}`.
 - No hay polling.

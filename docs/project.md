@@ -30,9 +30,13 @@
 | Amplify Hosting | Build, CDN y deploy continuo del sitio Astro estático |
 | Cognito | Login (User Pool). Emite el JWT que valida la API |
 | API Gateway (HTTP API) | Puerta de entrada de la API, con JWT authorizer de Cognito |
-| Lambda | Lógica de negocio: URL prefirmada, CRUD de libros y estados, extracción de metadata, envío al Kindle |
+| Lambda | Lógica de negocio: URL prefirmada, CRUD de libros y estados, extracción de metadata, envío al Kindle, avisos push |
 | DynamoDB | Tabla `readflow` (single-table): libros, autores, historial y ajustes. Streams habilitado. Ver [modelo de datos](./specs/modelo-de-datos.md) |
-| S3 | Almacenamiento de los EPUB |
+| S3 | Almacenamiento de los EPUB y portadas |
+| EventBridge | Lleva el `Object Created` del bucket a la Lambda de metadata |
+| SQS | Colas de fallos de las Lambdas de metadata y Kindle |
+| AppSync Events | Avisos push al navegador cuando cambia la ingesta o el envío al Kindle |
+| Secrets Manager | Token de GitHub con el que Amplify lee el repo |
 | SES | Envío del email con el EPUB adjunto al Kindle |
 | CloudWatch | Logs y métricas |
 
@@ -43,7 +47,7 @@ Ver el diagrama en [`architecture.drawio`](./architecture.drawio).
 - **Subida con URL prefirmada.** El EPUB viaja directo del navegador a S3 sin pasar por Lambda ni API Gateway, así evito el límite de payload de ~6 MB y no pago tiempo de cómputo por mover bytes.
 - **Envío al Kindle event-driven.** El cambio de estado a Reading queda en DynamoDB y Streams dispara la Lambda que arma el correo, en vez de enviarlo dentro de la misma llamada a la API. Si SES falla se reintenta sin romper la respuesta al usuario.
 - **SES en vez de SNS.** SNS no envía adjuntos ni entrega a direcciones que no confirmaron la suscripción, así que no sirve para el envío al Kindle.
-- **Python en el backend** aunque el frontend sea TypeScript: `ebooklib` resuelve el parseo del EPUB directamente, y empaquetar dependencias con binarios en layers de Lambda es parte de lo que quiero aprender.
+- **Python en el backend** aunque el frontend sea TypeScript: al final el parseo del EPUB salió con la stdlib (zipfile + ElementTree, [ADR 0009](./adr/0009-lambda-metadata-eventbridge-parser-stdlib.md)), así que las Lambdas no tienen dependencias ni layers.
 
 ## Pendientes por definir
 

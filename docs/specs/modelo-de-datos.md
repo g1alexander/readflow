@@ -49,7 +49,7 @@ BOOK#<ulid>     EVENT#<ulid>        EVENT
 | `ingestError` | string | no | Solo con `ingest=failed`; mensaje corto, sin el payload. Valores: `not a zip file`, `invalid XML`, `missing META-INF/container.xml`, `missing OPF rootfile`, `missing OPF`, `missing OPF metadata`, `metadata file too large` (XML > 5 MB), `unreadable zip entry` (entrada cifrada, compresión no soportada o truncada) |
 | `kindle` | map | no | Ausente = nunca pedido. Ver abajo |
 | `createdAt` | string ISO | sí | |
-| `updatedAt` | string ISO | sí | Se actualiza en cada escritura |
+| `updatedAt` | string ISO | sí | Se actualiza en cada escritura, salvo al liberar `kindle.processedFor` en la Lambda de Kindle |
 
 `kindle`:
 
@@ -65,7 +65,7 @@ La API reemplaza el mapa `kindle` completo en cada pedido (#6, #7), así que `pr
 
 `sent` significa que SES aceptó el correo, no que el Kindle lo recibió; SES no puede confirmar la entrega.
 
-No se guardan: los colores de la portada placeholder (`bg`/`ink`, el front los deriva del `id`) ni la URL del EPUB (se genera como presigned URL al pedirla).
+No se guardan: los colores de la portada placeholder (`bg`/`ink`, el front los deriva del `id`) ni la URL del EPUB (no hay ruta de descarga todavía; cuando exista será una presigned URL generada al pedirla).
 
 ### Author — `USER#<sub>` / `AUTHOR#<slug>`
 
@@ -200,7 +200,7 @@ users/<sub>/books/<ulid>/cover.<ext>
 ```
 
 - La API arma la key; el cliente nunca la elige.
-- La Lambda de metadata obtiene `<sub>` y `<ulid>` de la key del evento `ObjectCreated` (filtro de sufijo `book.epub`).
+- La Lambda de metadata obtiene `<sub>` y `<ulid>` de la key del evento EventBridge `Object Created` (regla con wildcard `users/*/books/*/book.epub`).
 - Borrar un libro = borrar el prefijo `users/<sub>/books/<ulid>/`.
 
 ## Enums
@@ -231,10 +231,10 @@ Se guardan las keys; los labels viven en el front.
 ## Fuera de esta spec
 
 - Highlights de Kindle (fase 2). El single-table permite agregar `HIGHLIGHT#` en la partición `BOOK#<ulid>` sin migrar.
-- On-failure destination de la Lambda de metadata y limpieza de libros `pending` huérfanos.
+- Limpieza de libros `pending` huérfanos.
 - Migrar los datos actuales de localStorage.
 
 ## Cuándo revisar
 
-- Si el tablero necesita paginar o filtrar del lado del servidor → GSI por `status` (`GSI1PK = USER#<sub>#STATUS#<status>`).
+- Si filtrar por `status`/`type` en la Lambda se vuelve lento (muchos libros por usuario) → GSI por `status` (`GSI1PK = USER#<sub>#STATUS#<status>`).
 - Si aparece "libros de un autor" como pantalla → GSI por autor, o un item de relación por autor.

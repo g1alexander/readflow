@@ -33,7 +33,7 @@ Esperado: `401 {"message":"Unauthorized"}` (lo responde API Gateway; la Lambda n
 curl -i -H "Authorization: Bearer $TOKEN" "${API_URL}/books"
 ```
 
-Esperado: `200 {"books": []}` sin libros cargados.
+Esperado: `200 {"books": [], "nextCursor": null}` sin libros cargados.
 
 ## 4. Subir un EPUB
 
@@ -57,7 +57,7 @@ Esperado: `200`. Comprobar el objeto:
 aws s3 ls "s3://g1-readflowstorage-epub/$(jq -r .book.epubKey /tmp/upload.json)"
 ```
 
-`GET /books` ya devuelve el libro con `ingest=pending` (pasa a `ready` cuando exista la Lambda de metadata, ALE-16).
+`GET /books` ya devuelve el libro con `ingest=pending`; pasa a `ready` (o `failed`) cuando la Lambda de metadata procesa el EPUB.
 
 ## Si falla
 
@@ -69,4 +69,4 @@ aws s3 ls "s3://g1-readflowstorage-epub/$(jq -r .book.epubKey /tmp/upload.json)"
 | `403 SignatureDoesNotMatch` en el PUT | Falta `content-type: application/epub+zip` o es otro |
 | `403 AccessDenied` / `Request has expired` en el PUT | La URL venció (15 min); pedir otra con `POST /uploads` |
 | `429` | Throttling del stage (10 rps / burst 20) |
-| CORS en el navegador | El origen no está en el context `corsOrigins`; actualizar `cdk.json` y desplegar `ReadflowServerless` |
+| CORS en el navegador | El origen no está en el context `corsOrigins`; actualizar `cdk.json` y desplegar `ReadflowServerless` (API) y `ReadflowStorage` (PUT del EPUB a S3) |

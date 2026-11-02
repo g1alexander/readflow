@@ -9,7 +9,7 @@ CDK v2 en TypeScript, `us-east-1`.
 | `ReadflowAuth` | Cognito User Pool + app client SRP |
 | `ReadflowRealtime` | AppSync Events: canal de avisos por usuario |
 | `ReadflowServerless` | HTTP API + JWT authorizer de Cognito + Lambdas `api`, `metadata`, `kindle`, `notify` (código en `../serverless/src`) |
-| `ReadflowFrontend` | Amplify Hosting, rama `main` |
+| `ReadflowFrontend` | Amplify Hosting, rama `main` en `readflow.chess-mentor.com` ([ADR 0012](../docs/adr/0012-dominio-custom-amplify-en-cdk.md)) |
 
 ```sh
 pnpm build   # type-check
@@ -22,11 +22,11 @@ pnpm diff
 
 1. Instalar la Amplify GitHub App en el repo.
 2. PAT classic (`admin:repo_hook`) en Secrets Manager como `readflow/github-token`.
-3. `pnpm exec cdk bootstrap` y `pnpm deploy --all`.
+3. `pnpm exec cdk bootstrap` y `pnpm run deploy --all`.
 
 `ReadflowRealtime` depende de `ReadflowAuth`; `ReadflowServerless` depende de `ReadflowStorage`, `ReadflowAuth`, `ReadflowMail` y `ReadflowRealtime`; `ReadflowFrontend` depende de `ReadflowAuth`, `ReadflowServerless` y `ReadflowRealtime`: destruir primero `ReadflowFrontend`, luego `ReadflowServerless`, luego `ReadflowRealtime`.
 
-Los orígenes CORS del bucket salen del context `corsOrigins` de `cdk.json`. Los mismos orígenes aplican al CORS del HTTP API. Si cambia el dominio del frontend, se actualiza ahí y se despliegan `ReadflowStorage` y `ReadflowServerless`.
+Los orígenes CORS del bucket salen del context `corsOrigins` de `cdk.json`. Los mismos orígenes aplican al CORS del HTTP API. El dominio del frontend sale de los context `appDomain` y `appSubdomain`; si cambia, se actualiza también `corsOrigins` y se despliegan `ReadflowFrontend`, `ReadflowStorage` y `ReadflowServerless`.
 
 Probar la API con un token: [runbook](../docs/runbooks/probar-api-con-token.md).
 
