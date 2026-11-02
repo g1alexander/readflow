@@ -108,7 +108,7 @@ El texto que muestra el timeline lo arma el front a partir de `kind` + `data`.
 
 | # | Caso | Quién | Operación |
 | --- | --- | --- | --- |
-| 1 | Tablero: todos mis libros | API | `Query PK=USER#<sub> AND begins_with(SK, "BOOK#")`. Paginar con `LastEvaluatedKey` (1 MB por página) hasta agotar. El front agrupa por `status` |
+| 1 | Listar mis libros (tablero, biblioteca) | API | `Query PK=USER#<sub> AND begins_with(SK, "BOOK#")`, `ScanIndexForward=false`. Paginar con `LastEvaluatedKey` (1 MB por página) hasta juntar `limit` coincidencias o agotar. Filtros `type`/`status`/`q` en la Lambda, sin GSI. Ver [api.md](api.md#get-books) |
 | 2 | Detalle de un libro | API | `GetItem USER#<sub> / BOOK#<id>` y después `Query PK=BOOK#<id> AND begins_with(SK, "EVENT#")`, `ScanIndexForward=false`. Si el GetItem no devuelve nada → 404 sin leer eventos (esa lectura es la verificación de dueño) |
 | 3 | Autocompletar autores | API | `Query PK=USER#<sub> AND begins_with(SK, "AUTHOR#")` |
 | 4 | Crear libro (`POST /uploads`) | API | `TransactWriteItems`: Put Book (`status=toread`, `ingest=pending`, `attribute_not_exists(PK)`) + Put Event `uploaded`. El body no trae `status`: todo libro nace en `toread` y el envío a Kindle solo sale del patrón #6. Devuelve la presigned URL de `epubKey` |

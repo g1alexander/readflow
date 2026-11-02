@@ -1,6 +1,9 @@
-import { STATES, isState, load, getBook, kindleErrorText, moveBook, onChange, subscribe, showError, type Book, type StateId } from './store';
+import { STATES, isState, queryBooks, getBook, kindleErrorText, matchesQuery, moveBook, onChange, onReconnect, subscribe, showError, type Book, type StateId } from './store';
 import { getSettings } from './api';
-import { $, esc, icon, coverHTML, fmtDate, pill, ICON_SM, STATE_BTN } from './ui';
+import { $, bindSearch, btn, esc, icon, coverHTML, fmtDate, pill, ICON_SM, STATE_BTN } from './ui';
+
+const TOREAD_LIMIT = 5;
+const OTHER_STATES = STATES.map((s) => s.id).filter((s) => s !== 'toread');
 
 const detailHref = (b: Book) => `/libro?id=${encodeURIComponent(b.id)}`;
 
@@ -31,13 +34,20 @@ function kindleStatusHTML(b: Book) {
 }
 
 export async function initBoard() {
-  let books: Book[] = [];
+  let toread: Book[] = [];
+  let toreadMore = false;
+  let others: Book[] = [];
   let query = '';
   let mobileTab: StateId = 'toread';
   let dragId: string | null = null;
+  let generation = 0;
 
-  const matches = (b: Book) => !query || (b.title + ' ' + b.author).toLowerCase().includes(query);
-  const byState = (s: StateId) => books.filter((b) => b.state === s && matches(b));
+  const byState = (s: StateId) => (s === 'toread' ? toread : others.filter((b) => b.state === s));
+  const countLabel = (s: StateId) => byState(s).length + (s === 'toread' && toreadMore ? '+' : '');
+  const seeAllHTML = () => {
+    const href = '/biblioteca?status=toread' + (query ? '&q=' + encodeURIComponent(query) : '');
+    return `<a class="${btn('ghost')} min-h-9 text-[13px] text-s-ink hover:text-s-ink hover:bg-white/60" href="${esc(href)}">Ver todos ${icon('chev', ICON_SM)}</a>`;
+  };
 
   const now = $('#now');
   const board = $('#board');
@@ -47,8 +57,8 @@ export async function initBoard() {
   const sheetStates = $('#sheet-states');
 
   function render() {
-    const reading = books.filter((b) => b.state === 'reading');
-    $('#summary').textContent = `${books.length} ${books.length === 1 ? 'libro' : 'libros'} en tu biblioteca · ${reading.length} leyendo ahora`;
+    const reading = byState('reading');
+    $('#summary').textContent = `${reading.length} leyendo ahora` + (query ? ` · resultados para «${query}»` : '');
 
     now.innerHTML = reading.length
       ? reading.map((b) => `
@@ -68,28 +78,75 @@ export async function initBoard() {
       return `<section class="bg-s-bg rounded-lg px-3 py-3.5 flex flex-col gap-2.5 min-h-[420px] border-2 border-transparent transition-colors data-over:border-s-ink data-over:border-dashed" data-state="${s.id}" data-column aria-label="${s.name}, ${list.length} libros">
         <div class="flex items-center justify-between px-1 pt-0.5 pb-1">
           <h3 class="flex items-center gap-2 font-bold text-sm text-s-ink"><span class="size-[9px] rounded-full bg-s-dot"></span>${s.name}</h3>
-          <span class="text-xs font-bold text-s-ink bg-white/70 px-2 py-0.5 rounded-full">${list.length}</span>
+          <span class="text-xs font-bold text-s-ink bg-white/70 px-2 py-0.5 rounded-full">${countLabel(s.id)}</span>
         </div>
         ${list.map((b) => cardHTML(b, false)).join('') || '<p class="text-[13px] text-s-ink opacity-70 px-1 py-2">Suelta un libro aquí</p>'}
+        ${s.id === 'toread' ? seeAllHTML() : ''}
       </section>`;
     }).join('');
 
-    tabs.innerHTML = STATES.map((s) => `<button type="button" class="shrink-0 min-h-10 px-3.5 rounded-full border-2 border-line-soft bg-surface text-ink-2 text-[13px] font-bold whitespace-nowrap aria-selected:bg-s-bg aria-selected:text-s-ink aria-selected:border-s-ink" role="tab" data-state="${s.id}" data-tab="${s.id}" aria-selected="${s.id === mobileTab}">${s.name} · ${byState(s.id).length}</button>`).join('');
+    tabs.innerHTML = STATES.map((s) => `<button type="button" class="shrink-0 min-h-10 px-3.5 rounded-full border-2 border-line-soft bg-surface text-ink-2 text-[13px] font-bold whitespace-nowrap aria-selected:bg-s-bg aria-selected:text-s-ink aria-selected:border-s-ink" role="tab" data-state="${s.id}" data-tab="${s.id}" aria-selected="${s.id === mobileTab}">${s.name} · ${countLabel(s.id)}</button>`).join('');
 
     mlist.dataset.state = mobileTab;
-    mlist.innerHTML = byState(mobileTab).map((b) => cardHTML(b, true)).join('') ||
-      '<p class="text-[13px] text-s-ink opacity-70 px-1 py-2">No hay libros en este estado</p>';
+    mlist.innerHTML = (byState(mobileTab).map((b) => cardHTML(b, true)).join('') ||
+      '<p class="text-[13px] text-s-ink opacity-70 px-1 py-2">No hay libros en este estado</p>') +
+      (mobileTab === 'toread' ? seeAllHTML() : '');
 
-    const last = books.filter((b) => b.kindle).sort((a, b) => b.kindle!.at.localeCompare(a.kindle!.at))[0];
+    const last = [...toread, ...others].filter((b) => b.kindle).sort((a, b) => b.kindle!.at.localeCompare(a.kindle!.at))[0];
     $('#kindle-last').textContent = last?.kindle ? `Último envío: ${last.title} · ${fmtDate(last.kindle.at)}` : 'Sin envíos todavía';
   }
 
-  const search = $<HTMLInputElement>('#search');
-  search.addEventListener('input', () => { query = search.value.trim().toLowerCase(); render(); });
-  $('#search-toggle').addEventListener('click', () => {
-    $('#search-box').toggleAttribute('data-open');
-    search.focus();
-  });
+  async function reload() {
+    const current = ++generation;
+    const q = query || undefined;
+    try {
+      const [first, rest] = await Promise.all([
+        queryBooks({ status: ['toread'], limit: TOREAD_LIMIT, q }),
+        queryBooks({ status: OTHER_STATES, q }),
+      ]);
+      if (current !== generation) return;
+      toread = first.books;
+      toreadMore = first.nextCursor !== null;
+      others = rest.books;
+      render();
+    } catch (err) {
+      showError(err);
+    }
+  }
+
+  async function reloadToread() {
+    const current = generation;
+    try {
+      const { books, nextCursor } = await queryBooks({ status: ['toread'], limit: TOREAD_LIMIT, q: query || undefined });
+      if (current !== generation) return;
+      toread = books;
+      toreadMore = nextCursor !== null;
+      render();
+    } catch (err) {
+      showError(err);
+    }
+  }
+
+  function applyChange(book: Book | undefined, id: string) {
+    const ti = toread.findIndex((b) => b.id === id);
+    if (ti >= 0) toread.splice(ti, 1);
+    const oi = others.findIndex((b) => b.id === id);
+    if (oi >= 0) others.splice(oi, 1);
+    if (book && matchesQuery(book, query)) {
+      if (book.state !== 'toread') others.splice(oi >= 0 ? oi : 0, 0, book);
+      else {
+        toread.splice(ti >= 0 ? ti : 0, 0, book);
+        if (toread.length > TOREAD_LIMIT) {
+          toread.length = TOREAD_LIMIT;
+          toreadMore = true;
+        }
+      }
+    }
+    render();
+    if (ti >= 0 && !toread.some((b) => b.id === id)) reloadToread();
+  }
+
+  bindSearch((q) => { query = q; reload(); });
 
   tabs.addEventListener('click', (e) => {
     const t = (e.target as Element).closest<HTMLElement>('[data-tab]');
@@ -161,7 +218,8 @@ export async function initBoard() {
   $('#sheet-close').addEventListener('click', () => sheet.close());
   sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); });
 
-  onChange(render);
+  onChange(applyChange);
+  onReconnect(reload);
   render();
   getSettings()
     .then((s) => {
@@ -170,12 +228,6 @@ export async function initBoard() {
       $('#kindle-email').textContent = s.kindleEmail ?? 'Agrega tu correo en Ajustes';
     })
     .catch(showError);
-  try {
-    books = await load();
-  } catch (err) {
-    showError(err);
-    return;
-  }
-  render();
+  await reload();
   subscribe();
 }

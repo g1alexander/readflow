@@ -17,6 +17,8 @@ export class FrontendStack extends Stack {
     super(scope, id, props);
 
     const { appRoot, branch, nodeVersion, pnpmVersion } = config.frontend;
+    const appDomain = this.contextString('appDomain');
+    const appSubdomain = this.contextString('appSubdomain');
 
     const app = new amplify.App(this, 'FrontendApp', {
       appName: config.appName,
@@ -79,10 +81,21 @@ export class FrontendStack extends Stack {
       stage: 'PRODUCTION',
     });
 
+    app.addDomain(appDomain).mapSubDomain(main, appSubdomain);
+
     new CfnOutput(this, 'AmplifyAppId', { value: app.appId });
     new CfnOutput(this, 'AmplifyDefaultDomain', { value: app.defaultDomain });
     new CfnOutput(this, 'MainBranchUrl', {
       value: `https://${main.branchName}.${app.defaultDomain}`,
     });
+    new CfnOutput(this, 'AppUrl', { value: `https://${appSubdomain}.${appDomain}` });
+  }
+
+  private contextString(key: string): string {
+    const value: unknown = this.node.tryGetContext(key);
+    if (typeof value !== 'string' || value.length === 0) {
+      throw new Error(`Context "${key}" must be a non-empty string`);
+    }
+    return value;
   }
 }

@@ -1,4 +1,4 @@
-import { ApiError, listBooks, getBook as apiGetBook, patchBook, resendKindle, deleteBook as apiDeleteBook, type ApiBook, type ApiEvent, type BookPatch } from './api';
+import { ApiError, listBooks, getBook as apiGetBook, patchBook, resendKindle, deleteBook as apiDeleteBook, type ApiBook, type ApiEvent, type BookPatch, type ListParams } from './api';
 import { CONNECTION_STATE_CHANGE, ConnectionState, events } from 'aws-amplify/api';
 import { Hub } from 'aws-amplify/utils';
 import { userSub } from './auth';
@@ -18,22 +18,29 @@ export const isState = (v: unknown): v is StateId => STATES.some((s) => s.id ===
 export const stateName = (id: StateId) => (STATES.find((s) => s.id === id) ?? STATES[0]).name;
 
 export const TYPES = [
-  { id: 'productivity', name: 'Desarrollo y Productividad' },
-  { id: 'wellbeing', name: 'Mente y bienestar' },
-  { id: 'history', name: 'Historia y Sociedad' },
-  { id: 'film', name: 'Cine y cultura' },
-  { id: 'philosophy', name: 'Filosofía' },
-  { id: 'fiction', name: 'Clásicos y Narrativa' },
-  { id: 'thriller', name: 'Thriller y Terror' },
-  { id: 'scifi', name: 'Ciencia Ficción y Fantasía' },
-  { id: 'design', name: 'Arte y Diseño' },
-  { id: 'strategy', name: 'Sistemas y Estrategia' },
-  { id: 'programming', name: 'Programación y Software' },
-  { id: 'other', name: 'Otros y Antologías' },
+  { id: 'productivity', name: 'Desarrollo y Productividad', color: '#4FAE82' },
+  { id: 'wellbeing', name: 'Mente y bienestar', color: '#7CC4B4' },
+  { id: 'history', name: 'Historia y Sociedad', color: '#C9A15A' },
+  { id: 'film', name: 'Cine y cultura', color: '#E07A7A' },
+  { id: 'philosophy', name: 'Filosofía', color: '#9686DC' },
+  { id: 'fiction', name: 'Clásicos y Narrativa', color: '#C48BA1' },
+  { id: 'thriller', name: 'Thriller y Terror', color: '#8A2B2B' },
+  { id: 'scifi', name: 'Ciencia Ficción y Fantasía', color: '#6FA3D8' },
+  { id: 'design', name: 'Arte y Diseño', color: '#E79673' },
+  { id: 'strategy', name: 'Sistemas y Estrategia', color: '#D9B13E' },
+  { id: 'programming', name: 'Programación y Software', color: '#2A4E75' },
+  { id: 'other', name: 'Otros y Antologías', color: '#8A85A0' },
 ] as const;
 
 export type TypeId = (typeof TYPES)[number]['id'];
 export const isType = (v: unknown): v is TypeId => TYPES.some((t) => t.id === v);
+export const typeOf = (id?: TypeId) => TYPES.find((t) => t.id === id);
+
+export const NO_TYPE = 'none';
+export type TypeFilter = TypeId | typeof NO_TYPE;
+
+export const fold = (s: string) => s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase();
+export const matchesQuery = (b: Book, q: string) => !q || [b.title, ...b.authors].some((t) => fold(t).includes(fold(q)));
 
 export type EventKind = ApiEvent['kind'];
 
@@ -122,34 +129,41 @@ function toBook(b: ApiBook, history: Book['history']): Book {
   };
 }
 
-const books: Book[] = [];
+const cache = new Map<string, Book>();
 
 function upsert(b: ApiBook, events?: ApiEvent[]): Book {
-  const i = books.findIndex((x) => x.id === b.id);
-  const history = events ? events.map((ev) => ({ at: ev.at, kind: ev.kind, text: eventText(ev) })) : books[i]?.history ?? [];
+  const history = events ? events.map((ev) => ({ at: ev.at, kind: ev.kind, text: eventText(ev) })) : cache.get(b.id)?.history ?? [];
   const book = toBook(b, history);
-  if (i < 0) books.push(book);
-  else books[i] = book;
+  cache.set(book.id, book);
   return book;
 }
 
-export async function load(): Promise<Book[]> {
-  const { books: list } = await listBooks();
-  const prev = new Map(books.map((b) => [b.id, b.history]));
-  books.splice(0, books.length, ...list.map((b) => toBook(b, prev.get(b.id) ?? [])));
-  return books;
+export async function queryBooks(params: ListParams): Promise<{ books: Book[]; nextCursor: string | null }> {
+  const { books, nextCursor } = await listBooks(params);
+  return {
+    books: books.map((b) => {
+      const before = cache.get(b.id)?.kindle?.status;
+      const book = upsert(b);
+      toastKindle(book, before);
+      return book;
+    }),
+    nextCursor,
+  };
 }
 
-export const getBook = (id: string | null) => books.find((b) => b.id === id);
+export const getBook = (id: string | null) => (id ? cache.get(id) : undefined);
 
 export async function fetchBook(id: string): Promise<Book> {
   const { book, events } = await apiGetBook(id);
   return upsert(book, events);
 }
 
-const listeners = new Set<() => void>();
-export const onChange = (fn: () => void) => listeners.add(fn);
-const notify = () => listeners.forEach((fn) => fn());
+const listeners = new Set<(book: Book | undefined, id: string) => void>();
+export const onChange = (fn: (book: Book | undefined, id: string) => void) => listeners.add(fn);
+const notify = (id: string) => listeners.forEach((fn) => fn(cache.get(id), id));
+
+const reloaders = new Set<() => void>();
+export const onReconnect = (fn: () => void) => reloaders.add(fn);
 
 export function showError(err: unknown) {
   console.error(err);
@@ -164,7 +178,7 @@ export function showError(err: unknown) {
 export async function updateBook(id: string, body: BookPatch): Promise<Book | undefined> {
   try {
     const book = upsert((await patchBook(id, body)).book);
-    notify();
+    notify(id);
     return book;
   } catch (err) {
     showError(err);
@@ -184,7 +198,7 @@ export async function sendToKindle(id: string) {
   try {
     const book = upsert((await resendKindle(id)).book);
     toast('Enviando «' + book.title + '» a tu Kindle…', 'mail');
-    notify();
+    notify(id);
   } catch (err) {
     showError(err);
   }
@@ -193,9 +207,8 @@ export async function sendToKindle(id: string) {
 export async function removeBook(id: string): Promise<boolean> {
   try {
     await apiDeleteBook(id);
-    const i = books.findIndex((b) => b.id === id);
-    if (i >= 0) books.splice(i, 1);
-    notify();
+    cache.delete(id);
+    notify(id);
     return true;
   } catch (err) {
     showError(err);
@@ -212,14 +225,11 @@ function toastKindle(book: Book, before: string | undefined) {
   if (book.kindle?.status === 'failed') toast('No se pudo enviar «' + book.title + '» al Kindle');
 }
 
-async function refresh(id?: string) {
+async function refresh(id: string) {
   try {
-    const before = new Map(books.map((b) => [b.id, b.kindle?.status]));
-    if (id) await fetchBook(id);
-    else if (detailId) await fetchBook(detailId);
-    else await load();
-    for (const b of books) if (!id || b.id === id) toastKindle(b, before.get(b.id));
-    notify();
+    const before = cache.get(id)?.kindle?.status;
+    toastKindle(await fetchBook(id), before);
+    notify(id);
   } catch (err) {
     console.error(err);
   }
@@ -230,7 +240,10 @@ export async function subscribe() {
   subscribed = true;
   Hub.listen('api', ({ payload }) => {
     const data = payload.data as { connectionState?: ConnectionState } | undefined;
-    if (payload.event === CONNECTION_STATE_CHANGE && data?.connectionState === ConnectionState.Connected) refresh();
+    if (payload.event === CONNECTION_STATE_CHANGE && data?.connectionState === ConnectionState.Connected) {
+      if (detailId) refresh(detailId);
+      else reloaders.forEach((fn) => fn());
+    }
   });
   try {
     const channel = await events.connect('/readflow/users/' + (await userSub()));

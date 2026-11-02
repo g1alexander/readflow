@@ -65,7 +65,18 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return data as T;
 }
 
-export const listBooks = () => request<{ books: ApiBook[] }>('GET', '/books');
+export interface ListParams { limit?: number; cursor?: string | null; type?: string[]; status?: string[]; q?: string }
+
+export function listBooks({ limit, cursor, type, status, q }: ListParams = {}) {
+  const qs = new URLSearchParams();
+  if (limit) qs.set('limit', String(limit));
+  if (cursor) qs.set('cursor', cursor);
+  if (type?.length) qs.set('type', type.join(','));
+  if (status?.length) qs.set('status', status.join(','));
+  if (q) qs.set('q', q);
+  const query = qs.toString();
+  return request<{ books: ApiBook[]; nextCursor: string | null }>('GET', '/books' + (query ? '?' + query : ''));
+}
 
 const bookPath = (id: string) => '/books/' + encodeURIComponent(id);
 

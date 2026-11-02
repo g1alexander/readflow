@@ -1,6 +1,6 @@
 # API HTTP
 
-Contrato entre el front y la Lambda `api`. Decisiones y porqués: [ALE-14](https://linear.app/g1alexander/issue/ALE-14), [ALE-15](https://linear.app/g1alexander/issue/ALE-15), [ALE-17](https://linear.app/g1alexander/issue/ALE-17) y [ADR 0008](../adr/0008-http-api-una-lambda-con-router.md). Modelo de datos: [modelo-de-datos.md](modelo-de-datos.md).
+Contrato entre el front y la Lambda `api`. Decisiones y porqués: [ALE-14](https://linear.app/g1alexander/issue/ALE-14), [ALE-15](https://linear.app/g1alexander/issue/ALE-15), [ALE-17](https://linear.app/g1alexander/issue/ALE-17), [ALE-30](https://linear.app/g1alexander/issue/ALE-30) y [ADR 0008](../adr/0008-http-api-una-lambda-con-router.md). Modelo de datos: [modelo-de-datos.md](modelo-de-datos.md).
 
 ## Base
 
@@ -33,7 +33,7 @@ Todo error que genera la Lambda:
 
 | HTTP | `code` | Cuándo |
 | --- | --- | --- |
-| 400 | `invalid_request` | Body que no es JSON o no cumple la validación de la ruta |
+| 400 | `invalid_request` | Body que no es JSON, o body o query string que no cumple la validación de la ruta |
 | 401 | `unauthorized` | El token no trae `sub` |
 | 404 | `not_found` | Ruta sin handler en la Lambda, o libro que no existe o no es del usuario |
 | 409 | `kindle_email_missing` | Pedido de envío a Kindle sin `kindleEmail` en ajustes |
@@ -46,7 +46,23 @@ Todo error que genera la Lambda:
 
 ### `GET /books`
 
-Tablero: todos los libros del usuario (access pattern #1 del modelo de datos). La Lambda pagina con `LastEvaluatedKey` hasta agotar y devuelve todo junto; el front agrupa por `status`.
+Libros del usuario, del más nuevo al más viejo (access pattern #1 del modelo de datos). Sirve al tablero y a la biblioteca.
+
+Query string, todos opcionales:
+
+| Param | Formato | Efecto |
+| --- | --- | --- |
+| `limit` | entero 1–100 | Máximo de libros por respuesta. Sin `limit` → todos los que coinciden, `nextCursor` siempre `null` |
+| `cursor` | string opaco | `nextCursor` de la respuesta anterior. Sigue desde ahí con los mismos filtros |
+| `type` | csv de [`type`](modelo-de-datos.md#type) + `none` | Libros con alguna de esas categorías. `none` = sin `type` |
+| `status` | csv de `status` | Libros en alguno de esos estados |
+| `q` | string 1–300 | Contiene el texto en `name` o en algún `authors[].name`, sin distinguir mayúsculas ni tildes |
+
+- Los filtros combinan en AND; dentro de un csv, en OR. Valores repetidos o vacíos en un csv se ignoran; si queda vacío → 400.
+- `cursor` es base64url (sin padding) de la key del último libro devuelto. Si no decodifica o no es un libro del usuario → 400. El front no lo interpreta.
+- Los filtros se aplican en la Lambda mientras pagina el Query (sin GSI): una respuesta con `limit` puede leer varias páginas de DynamoDB.
+- `nextCursor` no nulo no garantiza que haya más coincidencias: la siguiente respuesta puede venir con `books: []` y `nextCursor: null`.
+- Errores de validación → `400 invalid_request` (`limit` fuera de rango o no entero, valor fuera del enum, `cursor` inválido, `q` vacío o largo).
 
 `200`:
 
@@ -66,15 +82,16 @@ Tablero: todos los libros del usuario (access pattern #1 del modelo de datos). L
       "createdAt": "2026-10-08T21:04:14.123Z",
       "updatedAt": "2026-10-08T21:04:14.123Z"
     }
-  ]
+  ],
+  "nextCursor": "eyJQSyI6..."
 }
 ```
 
 - Cada elemento es un [Book](modelo-de-datos.md#book--usersub--bookulid) con sus atributos tal cual, sin `PK`, `SK` ni `entity`. Los opcionales ausentes no aparecen.
 - `coverUrl`: presigned GET de `coverKey`, válida 3600 s. Solo aparece si hay `coverKey`. Se firma en la Lambda, sin llamar a S3: que la URL exista no garantiza que el objeto exista. El front no la guarda: si la imagen no carga (URL vencida o sin objeto), muestra el placeholder; la próxima carga trae una URL nueva.
 - Los números (`score`, `year`, `epubSize`) salen como números JSON.
-- Sin libros → `200 {"books": []}`.
-- Orden: el de la SK (ULID, por fecha de creación ascendente).
+- Sin coincidencias → `200 {"books": [], "nextCursor": null}`.
+- Orden: SK descendente (ULID: más nuevo primero).
 
 ### `POST /uploads`
 

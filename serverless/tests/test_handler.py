@@ -18,19 +18,28 @@ def _body(response):
     return json.loads(response["body"])
 
 
-def test_get_books_returns_the_board():
-    with patch.object(handler.books, "list_books", return_value=[{"id": "a"}]) as list_books:
+def test_get_books_returns_the_page():
+    page = {"books": [{"id": "a"}], "nextCursor": None}
+    with patch.object(handler.books, "list_books", return_value=page) as list_books:
         response = handler.handler(_event(), None)
 
-    list_books.assert_called_once_with("u1")
+    list_books.assert_called_once_with("u1", {})
     assert response["statusCode"] == 200
     assert response["headers"]["content-type"] == "application/json"
-    assert _body(response) == {"books": [{"id": "a"}]}
+    assert _body(response) == page
+
+
+def test_get_books_passes_the_query_string():
+    event = {**_event(), "queryStringParameters": {"limit": "5"}}
+    with patch.object(handler.books, "list_books", return_value={"books": []}) as list_books:
+        handler.handler(event, None)
+
+    list_books.assert_called_once_with("u1", {"limit": "5"})
 
 
 def test_serializes_decimals_as_json_numbers():
     book = {"id": "a", "score": Decimal("4"), "ratio": Decimal("0.5")}
-    with patch.object(handler.books, "list_books", return_value=[book]):
+    with patch.object(handler.books, "list_books", return_value={"books": [book]}):
         response = handler.handler(_event(), None)
 
     assert response["body"] == '{"books": [{"id": "a", "score": 4, "ratio": 0.5}]}'

@@ -1,0 +1,40 @@
+---
+import Base from '../layouts/Base.astro';
+import AppShell from '../components/AppShell.astro';
+import SearchInput from '../components/SearchInput.astro';
+import Icon from '../components/Icon.astro';
+import { btn, PAGE_TITLE, SUBTITLE, SECTION_TITLE, ICON_SM } from '../scripts/ui';
+const chipsRow = 'flex gap-2 overflow-x-auto -mx-5 px-5 pb-0.5 [scrollbar-width:none] md:mx-0 md:px-0 md:flex-wrap';
+---
+<Base title="Biblioteca — Readflow" auth="private">
+  <AppShell current="/biblioteca">
+    <header class="flex flex-wrap items-end justify-between gap-4 max-md:items-center max-md:flex-nowrap">
+      <div class="flex flex-col gap-1.5">
+        <h1 class={PAGE_TITLE}>Biblioteca</h1>
+        <p class={`${SUBTITLE} text-[15px] max-md:text-[13px]`} id="summary"></p>
+      </div>
+      <div class="flex items-center gap-3">
+        <SearchInput />
+        <a class={`${btn('primary')} max-md:hidden`} href="/subir"><Icon name="upload" class={ICON_SM} /> Subir EPUB</a>
+      </div>
+    </header>
+
+    <section class="flex flex-col gap-3" aria-label="Filtros">
+      <h2 class={SECTION_TITLE}>Categoría</h2>
+      <div class={chipsRow} id="type-chips"></div>
+      <h2 class={SECTION_TITLE}>Estado</h2>
+      <div class={chipsRow} id="status-chips"></div>
+    </section>
+
+    <section class="flex flex-col gap-6" aria-label="Libros">
+      <div class="library-grid grid grid-cols-2 gap-4 items-start overflow-y-clip md:grid-cols-3 md:gap-6" id="grid"></div>
+      <p class="text-muted text-sm text-center py-6" id="grid-status" aria-live="polite"></p>
+      <div id="sentinel" aria-hidden="true"></div>
+    </section>
+  </AppShell>
+</Base>
+
+<script>
+  import { initLibrary } from '../scripts/library';
+  initLibrary();
+</script>

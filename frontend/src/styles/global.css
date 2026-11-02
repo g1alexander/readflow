@@ -86,3 +86,17 @@ html[data-auth]:not([data-auth-ready]) body {
     *, *::before, *::after { animation: none !important; transition: none !important; }
   }
 }
+
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) and (width >= 51.3125rem) {
+    .library-grid > :nth-child(3n + 2) {
+      animation: library-reverse linear both;
+      animation-timeline: scroll(root block);
+    }
+
+    @keyframes library-reverse {
+      from { transform: translateY(-25vh); }
+      to { transform: translateY(25vh); }
+    }
+  }
+}

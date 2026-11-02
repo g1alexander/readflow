@@ -1,0 +1,53 @@
+---
+import Brand from './Brand.astro';
+import Icon from './Icon.astro';
+import { btn, NAV } from '../scripts/ui';
+interface Props { current: string }
+const { current } = Astro.props;
+const navItem = 'flex items-center gap-3 min-h-11 px-3 rounded-md no-underline font-medium';
+---
+<div class="grid grid-cols-[248px_minmax(0,1fr)] min-h-screen bg-[linear-gradient(to_right,var(--color-side)_248px,var(--color-canvas)_248px)] max-md:grid-cols-1 max-md:bg-none">
+  <aside class="bg-side border-r border-line-soft px-[18px] py-7 flex flex-col gap-7 sticky top-0 h-screen max-md:hidden">
+    <Brand href="/tablero" class="px-2" />
+    <nav class="flex flex-col gap-1" aria-label="Principal">
+      {NAV.map((n) => n.href === current ? (
+        <a class={`${navItem} bg-surface text-ink font-semibold hover:text-ink`} href={n.href} aria-current="page"><Icon name={n.icon} /> {n.label}</a>
+      ) : n.href ? (
+        <a class={`${navItem} text-ink-2 hover:bg-surface/60 hover:text-ink`} href={n.href}><Icon name={n.icon} /> {n.label}</a>
+      ) : (
+        <span class={`${navItem} text-muted-2 cursor-default`}>
+          <Icon name={n.icon} /> {n.label}
+          <span class="ml-auto text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/70 text-muted">Pronto</span>
+        </span>
+      ))}
+    </nav>
+    <div class="mt-auto flex flex-col gap-7">
+      <slot name="aside" />
+      <button class={`${btn('ghost')} justify-start`} type="button" data-logout><Icon name="logout" /> Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="px-10 pt-8 pb-14 flex flex-col gap-8 min-w-0 max-md:px-5 max-md:pt-5 max-md:pb-[120px] max-md:gap-[22px]">
+    <slot />
+  </main>
+</div>
+
+<a class="fixed right-5 bottom-[calc(92px+env(safe-area-inset-bottom,0px))] size-14 rounded-[18px] bg-ink text-white hover:text-white grid place-items-center shadow-[0_8px_20px_rgba(43,40,64,.2)] z-20 md:hidden" href="/subir" aria-label="Subir EPUB">
+  <Icon name="plus" class="size-[22px]" />
+</a>
+
+<nav class="fixed inset-x-0 bottom-0 z-20 bg-surface border-t border-line grid grid-cols-4 pt-1.5 pb-[calc(8px+env(safe-area-inset-bottom,0px))] md:hidden" aria-label="Principal">
+  {NAV.map((n) => n.href === current ? (
+    <a class="flex flex-col items-center justify-center gap-1 min-h-14 no-underline text-toread-ink hover:text-toread-ink text-[11px] font-bold" href={n.href} aria-current="page">
+      <span class="px-4 py-1 rounded-full flex bg-toread-bg"><Icon name={n.icon} /></span>{n.label}
+    </a>
+  ) : n.href ? (
+    <a class="flex flex-col items-center justify-center gap-1 min-h-14 no-underline text-muted hover:text-ink text-[11px] font-semibold" href={n.href}>
+      <span class="px-4 py-1 rounded-full flex"><Icon name={n.icon} /></span>{n.label}
+    </a>
+  ) : (
+    <span class="flex flex-col items-center justify-center gap-1 min-h-14 text-muted text-[11px] font-semibold opacity-60">
+      <span class="px-4 py-1 rounded-full flex"><Icon name={n.icon} /></span>{n.label}
+    </span>
+  ))}
+</nav>

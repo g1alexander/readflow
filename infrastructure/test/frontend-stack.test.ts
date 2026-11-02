@@ -7,7 +7,7 @@ describe('FrontendStack', () => {
   let template: Template;
 
   beforeAll(() => {
-    const app = new App();
+    const app = new App({ context: { appDomain: 'example.com', appSubdomain: 'readflow' } });
     const stack = new FrontendStack(app, 'TestFrontend', {
       env: { account: '123456789012', region: 'us-east-1' },
       userPoolId: 'us-east-1_TestPool',
@@ -68,6 +68,13 @@ describe('FrontendStack', () => {
       BranchName: 'main',
       EnableAutoBuild: true,
       Stage: 'PRODUCTION',
+    });
+  });
+
+  it('maps the main branch to the custom subdomain', () => {
+    template.hasResourceProperties('AWS::Amplify::Domain', {
+      DomainName: 'example.com',
+      SubDomainSettings: [{ BranchName: Match.anyValue(), Prefix: 'readflow' }],
     });
   });
 });

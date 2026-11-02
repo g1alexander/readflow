@@ -1,3 +1,6 @@
+import base64
+import binascii
+import json
 import os
 from datetime import UTC, datetime
 from functools import cache
@@ -11,7 +14,7 @@ from botocore.exceptions import ClientError
 from api import db
 from api.errors import Conflict, InvalidRequest, NotFound
 from api.routes import settings
-from common.slug import slugify
+from common.slug import fold, slugify
 from common.ulid import new_ulid
 
 HIDDEN_KEYS = ("PK", "SK", "entity")
@@ -34,6 +37,8 @@ TYPES = {
     "other",
 }
 NULLABLE = {"type", "score", "year"}
+MAX_LIMIT = 100
+NO_TYPE = "none"
 
 _serialize = TypeSerializer().serialize
 
@@ -84,11 +89,83 @@ def _events(book_id: str, **query) -> list[dict]:
     )
 
 
-def list_books(sub: str) -> list[dict]:
-    items = db.query_all(
-        KeyConditionExpression=Key("PK").eq(f"USER#{sub}") & Key("SK").begins_with("BOOK#"),
-    )
-    return [_public(item) for item in items]
+def _csv(field: str, value: str, allowed: set[str]) -> set[str]:
+    values = {item.strip() for item in value.split(",")} - {""}
+    if not values:
+        raise InvalidRequest(f"{field} must not be empty")
+    for item in values:
+        _enum(field, item, allowed)
+    return values
+
+
+def _limit(value: str) -> int:
+    if not value.isdigit() or not 1 <= int(value) <= MAX_LIMIT:
+        raise InvalidRequest(f"limit must be an integer between 1 and {MAX_LIMIT}")
+    return int(value)
+
+
+def _encode_cursor(item: dict) -> str:
+    raw = json.dumps({"PK": item["PK"], "SK": item["SK"]}).encode()
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def _decode_cursor(sub: str, value: str) -> dict:
+    try:
+        key = json.loads(base64.urlsafe_b64decode(value + "=" * (-len(value) % 4)))
+    except (binascii.Error, ValueError) as error:
+        raise InvalidRequest("cursor is invalid") from error
+    if (
+        not isinstance(key, dict)
+        or key.keys() != {"PK", "SK"}
+        or key["PK"] != f"USER#{sub}"
+        or not isinstance(key["SK"], str)
+        or not key["SK"].startswith("BOOK#")
+    ):
+        raise InvalidRequest("cursor is invalid")
+    return key
+
+
+def _filter(params: dict):
+    types = _csv("type", params["type"], TYPES | {NO_TYPE}) if "type" in params else None
+    statuses = _csv("status", params["status"], STATUSES) if "status" in params else None
+    q = fold(_text("q", params["q"])) if "q" in params else None
+
+    def matches(item: dict) -> bool:
+        if types is not None and item.get("type", NO_TYPE) not in types:
+            return False
+        if statuses is not None and item["status"] not in statuses:
+            return False
+        if q is not None:
+            names = [item.get("name", "")] + [a["name"] for a in item.get("authors", [])]
+            return any(q in fold(name) for name in names)
+        return True
+
+    return matches
+
+
+def list_books(sub: str, params: dict) -> dict:
+    limit = _limit(params["limit"]) if "limit" in params else None
+    matches = _filter(params)
+    query = {
+        "KeyConditionExpression": Key("PK").eq(f"USER#{sub}") & Key("SK").begins_with("BOOK#"),
+        "ScanIndexForward": False,
+    }
+    if "cursor" in params:
+        query["ExclusiveStartKey"] = _decode_cursor(sub, params["cursor"])
+    books = []
+    while True:
+        page = db.table().query(**query)
+        items = page["Items"]
+        for index, item in enumerate(items):
+            if not matches(item):
+                continue
+            books.append(_public(item))
+            if len(books) == limit:
+                more = index < len(items) - 1 or "LastEvaluatedKey" in page
+                return {"books": books, "nextCursor": _encode_cursor(item) if more else None}
+        if "LastEvaluatedKey" not in page:
+            return {"books": books, "nextCursor": None}
+        query["ExclusiveStartKey"] = page["LastEvaluatedKey"]
 
 
 def get_book(sub: str, book_id: str) -> dict:

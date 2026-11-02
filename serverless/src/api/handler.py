@@ -10,7 +10,10 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 ROUTES = {
-    "GET /books": lambda sub, event: (200, {"books": books.list_books(sub)}),
+    "GET /books": lambda sub, event: (
+        200,
+        books.list_books(sub, event.get("queryStringParameters") or {}),
+    ),
     "GET /books/{id}": lambda sub, event: (200, books.get_book(sub, _id(event))),
     "PATCH /books/{id}": lambda sub, event: (
         200,

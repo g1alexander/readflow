@@ -1,0 +1,10 @@
+---
+import Icon from './Icon.astro';
+import { btn, ICON_SM } from '../scripts/ui';
+---
+<label id="search-box" class="flex items-center gap-2 h-11 w-[260px] px-3.5 bg-surface border border-line-soft rounded-md focus-within:border-toread-dot focus-within:ring-3 focus-within:ring-toread-bg max-md:hidden max-md:data-open:flex max-md:data-open:w-full">
+  <span class="sr-only">Buscar en la biblioteca</span>
+  <Icon name="search" class={`${ICON_SM} text-muted-2`} />
+  <input id="search" type="search" placeholder="Título o autor" maxlength="300" class="border-0 outline-0 bg-transparent text-sm flex-1 min-w-0" />
+</label>
+<button class={`${btn('outline', 'icon')} md:hidden`} type="button" id="search-toggle" aria-label="Buscar"><Icon name="search" /></button>

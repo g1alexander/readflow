@@ -70,8 +70,9 @@ def _transaction(dynamodb):
 
 def test_queries_the_user_board_partition(aws):
     table, _, _ = aws
-    assert books.list_books("u1") == []
+    assert books.list_books("u1", {}) == {"books": [], "nextCursor": None}
 
+    assert table.query.call_args.kwargs["ScanIndexForward"] is False
     condition = table.query.call_args.kwargs["KeyConditionExpression"]
     expression = condition.get_expression()
     assert expression["operator"] == "AND"
@@ -87,9 +88,10 @@ def test_reads_every_page(aws):
         {"Items": [_book("a")], "LastEvaluatedKey": {"PK": "USER#u1", "SK": "BOOK#a"}},
         {"Items": [_book("b")]},
     ]
-    result = books.list_books("u1")
+    result = books.list_books("u1", {})
 
-    assert [b["id"] for b in result] == ["a", "b"]
+    assert [b["id"] for b in result["books"]] == ["a", "b"]
+    assert result["nextCursor"] is None
     assert "ExclusiveStartKey" not in table.query.call_args_list[0].kwargs
     assert table.query.call_args_list[1].kwargs["ExclusiveStartKey"] == {
         "PK": "USER#u1",
@@ -101,7 +103,9 @@ def test_strips_storage_keys(aws):
     table, _, s3 = aws
     table.query.return_value = {"Items": [_book("a")]}
 
-    assert books.list_books("u1") == [{"id": "a", "status": "toread", "ingest": "ready"}]
+    assert books.list_books("u1", {})["books"] == [
+        {"id": "a", "status": "toread", "ingest": "ready"}
+    ]
     s3.generate_presigned_url.assert_not_called()
 
 
@@ -109,7 +113,7 @@ def test_signs_a_cover_url_when_there_is_a_cover_key(aws):
     table, _, s3 = aws
     table.query.return_value = {"Items": [_book("a", coverKey="users/u1/books/a/cover.jpg")]}
 
-    [book] = books.list_books("u1")
+    [book] = books.list_books("u1", {})["books"]
 
     assert book["coverUrl"] == "https://users/u1/books/a/cover.jpg"
     s3.generate_presigned_url.assert_called_once_with(
@@ -117,6 +121,144 @@ def test_signs_a_cover_url_when_there_is_a_cover_key(aws):
         Params={"Bucket": "epub-bucket", "Key": "users/u1/books/a/cover.jpg"},
         ExpiresIn=3600,
     )
+
+
+def _ids(result):
+    return [b["id"] for b in result["books"]]
+
+
+def test_limit_stops_at_the_limit_and_returns_a_cursor_to_the_last_book(aws):
+    table, _, _ = aws
+    table.query.return_value = {"Items": [_book("c"), _book("b"), _book("a")]}
+
+    result = books.list_books("u1", {"limit": "2"})
+
+    assert _ids(result) == ["c", "b"]
+    assert books._decode_cursor("u1", result["nextCursor"]) == {"PK": "USER#u1", "SK": "BOOK#b"}
+
+
+def test_cursor_continues_after_the_given_key(aws):
+    table, _, _ = aws
+    cursor = books._encode_cursor({"PK": "USER#u1", "SK": "BOOK#b"})
+
+    books.list_books("u1", {"cursor": cursor, "limit": "2"})
+
+    assert table.query.call_args.kwargs["ExclusiveStartKey"] == {"PK": "USER#u1", "SK": "BOOK#b"}
+
+
+def test_limit_reached_on_the_last_item_of_the_last_page_has_no_cursor(aws):
+    table, _, _ = aws
+    table.query.return_value = {"Items": [_book("b"), _book("a")]}
+
+    assert books.list_books("u1", {"limit": "2"})["nextCursor"] is None
+
+
+def test_limit_reached_at_the_end_of_a_page_with_more_pages_has_a_cursor(aws):
+    table, _, _ = aws
+    table.query.return_value = {
+        "Items": [_book("b")],
+        "LastEvaluatedKey": {"PK": "USER#u1", "SK": "BOOK#b"},
+    }
+
+    assert books.list_books("u1", {"limit": "1"})["nextCursor"] is not None
+
+
+def test_limit_keeps_reading_pages_until_enough_matches(aws):
+    table, _, _ = aws
+    table.query.side_effect = [
+        {"Items": [_book("d", status="reading")], "LastEvaluatedKey": {"SK": "BOOK#d"}},
+        {"Items": [_book("c"), _book("b", status="reading"), _book("a")]},
+    ]
+
+    result = books.list_books("u1", {"limit": "1", "status": "reading"})
+
+    assert _ids(result) == ["d"]
+    assert table.query.call_count == 1
+
+    table.query.side_effect = [
+        {"Items": [_book("d")], "LastEvaluatedKey": {"SK": "BOOK#d"}},
+        {"Items": [_book("c"), _book("b", status="reading"), _book("a")]},
+    ]
+    result = books.list_books("u1", {"limit": "1", "status": "reading"})
+
+    assert _ids(result) == ["b"]
+    assert books._decode_cursor("u1", result["nextCursor"])["SK"] == "BOOK#b"
+
+
+def test_filters_by_status_csv(aws):
+    table, _, _ = aws
+    table.query.return_value = {
+        "Items": [_book("c", status="reading"), _book("b"), _book("a", status="finished")]
+    }
+
+    assert _ids(books.list_books("u1", {"status": "reading,finished"})) == ["c", "a"]
+
+
+def test_filters_by_type_with_none_for_books_without_type(aws):
+    table, _, _ = aws
+    table.query.return_value = {
+        "Items": [_book("c", type="fiction"), _book("b"), _book("a", type="history")]
+    }
+
+    assert _ids(books.list_books("u1", {"type": "fiction,none"})) == ["c", "b"]
+
+
+def test_q_matches_name_or_author_ignoring_case_and_accents(aws):
+    table, _, _ = aws
+    table.query.return_value = {
+        "Items": [
+            _book("d", name="Cien años de soledad", authors=[{"id": "g", "name": "García"}]),
+            _book("c", name="Otro", authors=[{"id": "b", "name": "José Borges"}]),
+            _book("b", name="Nada"),
+            _book("a"),
+        ]
+    }
+
+    assert _ids(books.list_books("u1", {"q": "ANOS"})) == ["d"]
+    assert _ids(books.list_books("u1", {"q": "jose"})) == ["c"]
+    assert _ids(books.list_books("u1", {"q": "garcía"})) == ["d"]
+
+
+def test_filters_combine_with_and(aws):
+    table, _, _ = aws
+    table.query.return_value = {
+        "Items": [
+            _book("c", name="Dune", type="scifi", status="reading"),
+            _book("b", name="Dune", type="scifi"),
+            _book("a", name="Solaris", type="scifi", status="reading"),
+        ]
+    }
+
+    result = books.list_books("u1", {"type": "scifi", "status": "reading", "q": "dune"})
+
+    assert _ids(result) == ["c"]
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"limit": "0"},
+        {"limit": "101"},
+        {"limit": "abc"},
+        {"limit": "-1"},
+        {"status": "nope"},
+        {"status": ","},
+        {"type": "fiction,nope"},
+        {"q": "   "},
+        {"q": "x" * 301},
+        {"cursor": "%%%"},
+        {"cursor": "bm90LWpzb24"},
+        {"cursor": books._encode_cursor({"PK": "USER#other", "SK": "BOOK#a"})},
+        {"cursor": books._encode_cursor({"PK": "USER#u1", "SK": "SETTINGS"})},
+    ],
+)
+def test_list_rejects_invalid_params_without_querying(aws, params):
+    table, _, _ = aws
+
+    with pytest.raises(InvalidRequest):
+        books.list_books("u1", params)
+
+    table.query.assert_not_called()
 
 
 def test_get_book_returns_the_book_and_its_events_newest_first(aws):

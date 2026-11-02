@@ -2,10 +2,24 @@
   "app": "pnpm exec tsx bin/readflow.ts",
   "watch": {
     "include": ["**"],
-    "exclude": ["README.md", "cdk*.json", "**/*.d.ts", "**/*.js", "tsconfig.json", "package.json", "pnpm-lock.yaml", "node_modules"]
+    "exclude": [
+      "README.md",
+      "cdk*.json",
+      "**/*.d.ts",
+      "**/*.js",
+      "tsconfig.json",
+      "package.json",
+      "pnpm-lock.yaml",
+      "node_modules"
+    ]
   },
   "context": {
-    "corsOrigins": ["http://localhost:4321", "https://main.d1ml4jzgx84ua3.amplifyapp.com"],
-    "mailDomain": "chess-mentor.com"
+    "corsOrigins": [
+      "http://localhost:4321",
+      "https://readflow.chess-mentor.com"
+    ],
+    "mailDomain": "chess-mentor.com",
+    "appDomain": "chess-mentor.com",
+    "appSubdomain": "readflow"
   }
 }

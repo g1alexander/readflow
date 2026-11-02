@@ -27,7 +27,7 @@ export function icon(name: IconName, cls = ICON): string {
 
 export const NAV: { label: string; icon: IconName; href?: string }[] = [
   { label: 'Tablero', icon: 'board', href: '/tablero' },
-  { label: 'Biblioteca', icon: 'library' },
+  { label: 'Biblioteca', icon: 'library', href: '/biblioteca' },
   { label: 'Notas', icon: 'notes' },
   { label: 'Ajustes', icon: 'settings', href: '/ajustes' },
 ];
@@ -67,6 +67,9 @@ export const FIELD_FOCUS = 'focus:outline-none focus:border-toread-dot focus:rin
 export const FIELD = `h-11 px-3.5 rounded-md border border-line-strong bg-surface text-[15px] w-full min-w-0 ${FIELD_FOCUS}`;
 export const FIELD_LABEL = 'text-sm font-semibold';
 export const STATE_BTN = 'min-h-11 px-[18px] rounded-full border-2 border-line-soft bg-surface text-ink-2 text-sm font-bold hover:not-aria-pressed:border-s-dot aria-pressed:bg-s-bg aria-pressed:text-s-ink aria-pressed:border-s-ink max-md:px-1.5 max-md:rounded-md max-md:text-[13px]';
+export const CHIP = 'shrink-0 inline-flex items-center gap-2 min-h-9 px-3 rounded-full border-2 border-line-soft bg-surface text-ink-2 text-[13px] font-bold whitespace-nowrap';
+export const STATE_CHIP = `${CHIP} hover:not-aria-pressed:border-s-dot aria-pressed:bg-s-bg aria-pressed:text-s-ink aria-pressed:border-s-ink`;
+export const TYPE_CHIP = `${CHIP} hover:not-aria-pressed:border-(--t) aria-pressed:bg-[color-mix(in_srgb,var(--t)_18%,white)] aria-pressed:text-ink aria-pressed:border-(--t)`;
 export const STATES_ROW = 'flex flex-wrap gap-2 max-md:grid max-md:grid-cols-3';
 
 export const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => (
@@ -86,6 +89,7 @@ const COVER = {
   xs: { box: 'w-[38px] p-[5px] justify-end rounded-[4px]', title: 'text-base leading-none', author: '' },
   queue: { box: 'w-[52px] max-md:w-[46px] p-[5px] justify-end rounded-[4px]', title: 'text-base leading-none', author: '' },
   now: { box: 'w-[92px] px-2.5 py-3 rounded-[6px] max-md:w-16 max-md:p-2', title: 'text-[13px] leading-[1.08] max-md:text-[10px]', author: 'text-[9px] max-md:hidden' },
+  grid: { box: 'w-full px-3 py-4 rounded-[10px] shadow-cover', title: 'text-lg leading-[1.1]', author: 'text-xs' },
   lg: { box: 'w-full px-6 py-7 rounded-[10px] shadow-cover max-md:w-28 max-md:px-2.5 max-md:py-3 max-md:rounded-[8px]', title: 'text-[34px] leading-[1.08] max-md:text-[15px]', author: 'text-sm max-md:text-[9px]' },
 };
 export type CoverSize = keyof typeof COVER;
@@ -115,6 +119,28 @@ export function toast(msg: string, iconName?: IconName, href?: string) {
   el.innerHTML = (iconName ? icon(iconName, ICON_SM) : '') + '<span>' + esc(msg) + '</span>';
   wrap.appendChild(el);
   setTimeout(() => el.remove(), href ? 6000 : 3200);
+}
+
+export function bindSearch(onSearch: (q: string) => void, initial = '') {
+  const input = $<HTMLInputElement>('#search');
+  const box = $('#search-box');
+  input.value = initial;
+  if (initial) box.toggleAttribute('data-open', true);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let last = initial.trim();
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const q = input.value.trim();
+      if (q === last) return;
+      last = q;
+      onSearch(q);
+    }, 300);
+  });
+  $('#search-toggle').addEventListener('click', () => {
+    box.toggleAttribute('data-open');
+    input.focus();
+  });
 }
 
 export const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => {
