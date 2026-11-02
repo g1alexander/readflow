@@ -14,7 +14,7 @@ Tras `POST /uploads` el libro existe con `ingest=pending` y el nombre del archiv
 - **Parser con stdlib** (`zipfile` + `xml.etree`): `container.xml` → OPF → `dc:title`, `dc:creator`, `dc:date`, portada (`properties="cover-image"` y, si no hay, `<meta name="cover">`).
 - **Trigger por EventBridge:** `eventBridgeEnabled` en el bucket + Rule `Object Created` filtrada por bucket y key `users/*/books/*/book.epub`, con target la Lambda.
 - **Errores:** un EPUB inválido se captura y deja el libro en `failed` sin reintento. Cualquier otro error se propaga: 2 reintentos async y luego on-failure destination a la cola SQS `readflow-metadata-failures` (14 días). Runbook: [reprocesar metadata](../runbooks/reprocesar-metadata.md).
-- **UI:** polling de `GET /books` cada 3 s mientras haya libros `pending`, tope 2 min. El push queda para ALE-10.
+- **UI:** polling de `GET /books` cada 3 s mientras haya libros `pending`, tope 2 min. Reemplazado por avisos push en [ADR 0011](0011-avisos-push-appsync-events-lambda-notify.md).
 - Contrato: patrón #5 y ciclo de vida de `ingest` en [`docs/specs/modelo-de-datos.md`](../specs/modelo-de-datos.md).
 
 ## Rejected alternatives

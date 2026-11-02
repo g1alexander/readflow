@@ -119,7 +119,7 @@ El texto que muestra el timeline lo arma el front a partir de `kind` + `data`.
 | 9 | Resultado del envío | Lambda Kindle | `TransactWriteItems`: Update `kindle.status` (`sent`/`failed`), `kindle.at` (+ `kindle.error` si `failed`) con condición `kindle.requestedAt = :req` + Put Event `kindle_sent`/`kindle_failed`. Si la condición falla, hubo un pedido más nuevo: no se escribe nada |
 | 10 | Borrar libro | API | `GetItem` del Book (verificación de dueño, 404 si no existe); borrar el prefijo S3 del libro; Query + `BatchWriteItem` de los eventos; al final Delete Book. El Book va último para que repetir el borrado tras un fallo termine el trabajo |
 | 11 | Leer/guardar ajustes | API | `GetItem` / `PutItem USER#<sub> / SETTINGS` |
-| 12 | Polling de `ingest` y `kindle` | Front | Repite #2 (o #1) cada 3 s mientras haya `ingest=pending` o `kindle.status=sending` con menos de 2 min desde `createdAt` / `kindle.requestedAt`. Push: [ALE-10](https://linear.app/g1alexander/issue/ALE-10) |
+| 12 | Aviso de `ingest` y `kindle` | Lambda notify + Front | La Lambda publica `{bookId}` en AppSync Events cuando cambia `ingest` o `kindle.status`; el front repite #2. Al (re)conectar, #1. Ver [realtime.md](realtime.md) |
 
 ## Ciclo de vida de `ingest`
 
@@ -146,7 +146,7 @@ Se busca el item del manifest con `properties="cover-image"` (EPUB3) y, si no ha
 
 ## Contrato del Stream (Lambda de envío a Kindle)
 
-Hay un solo Stream, que ve todas las escrituras de la tabla. Filtro de la event source mapping, para que solo lleguen libros listos con un pedido de envío:
+Hay un solo Stream, que ve todas las escrituras de la tabla, con dos consumidores: esta Lambda y la de avisos (abajo). Filtro de la event source mapping, para que solo lleguen libros listos con un pedido de envío:
 
 ```json
 {
@@ -175,6 +175,10 @@ Sin `INSERT`: un Book nace siempre con `ingest=pending`, así que el primer env�
 **Envío:** lee `kindleEmail` de Settings y el EPUB de S3 al procesar. Si el objeto pesa más de 28 MB (SES acepta 40 MB por mensaje y el adjunto crece ~33 % en base64) → `failed` con `too_large`, sin llamar a SES. Email: SES v2 `SendEmail` con contenido Raw; From = remitente del `MailStack`, To = `kindleEmail`, asunto = `name`, adjunto `<slug del name>.epub` (`application/epub+zip`).
 
 **Fallos:** los errores de envío (`too_large`, `kindle_email_missing`, `ses_error`) se escriben como `failed` según #9 y la Lambda termina OK; no hay reintento automático, el usuario reenvía (#7). Solo una caída de la Lambda (código o infraestructura) reintenta: event source mapping con `batchSize 1`, 2 reintentos, `bisectBatchOnError` y destino on-failure `readflow-kindle-failures` (SQS, 14 días).
+
+## Contrato del Stream (Lambda de avisos)
+
+Segundo consumidor del mismo Stream. Filtro: `eventName = MODIFY` y `NewImage.entity = BOOK`. En código publica solo si cambia `ingest` o `kindle.status` entre Old y New. No escribe en la tabla. Contrato del aviso: [realtime.md](realtime.md); decisión: [ADR 0011](../adr/0011-avisos-push-appsync-events-lambda-notify.md).
 
 ## S3 — bucket de EPUB
 
@@ -227,7 +231,6 @@ Se guardan las keys; los labels viven en el front.
 ## Fuera de esta spec
 
 - Highlights de Kindle (fase 2). El single-table permite agregar `HIGHLIGHT#` en la partición `BOOK#<ulid>` sin migrar.
-- Aviso push del fin de la metadata: [ALE-10](https://linear.app/g1alexander/issue/ALE-10).
 - On-failure destination de la Lambda de metadata y limpieza de libros `pending` huérfanos.
 - Migrar los datos actuales de localStorage.
 

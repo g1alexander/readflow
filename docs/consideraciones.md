@@ -11,4 +11,6 @@
 - **AppSync subscriptions:** notificaciones en tiempo real vía GraphQL.
 - **On-failure destination:** captura los fallos de la Lambda para no perderlos.
 
-**Resuelto (ALE-9):** `POST /uploads` crea el libro con `ingest=pending`, así nunca desaparece en silencio, y la webapp hace polling hasta `ready` o `failed`. Ver [modelo de datos](./specs/modelo-de-datos.md#ciclo-de-vida-de-ingest). El aviso push queda en [ALE-10](https://linear.app/g1alexander/issue/ALE-10); el on-failure destination, en la tarea de implementación.
+**Resuelto (ALE-9):** `POST /uploads` crea el libro con `ingest=pending`, así nunca desaparece en silencio, y la webapp hace polling hasta `ready` o `failed`. Ver [modelo de datos](./specs/modelo-de-datos.md#ciclo-de-vida-de-ingest). El on-failure destination, en la tarea de implementación.
+
+**Resuelto (ALE-10):** el polling se reemplazó por avisos push con AppSync Events, publicados por una Lambda sobre el Stream. Ver [ADR 0011](./adr/0011-avisos-push-appsync-events-lambda-notify.md) y [spec](./specs/realtime.md).
