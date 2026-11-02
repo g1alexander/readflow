@@ -386,6 +386,20 @@ def test_resend_kindle_requests_a_new_delivery(aws):
     assert [put["kind"] for put in puts] == ["kindle_requested"]
 
 
+def test_resend_kindle_replaces_the_previous_result(aws):
+    table, dynamodb, _ = aws
+    previous = {"requestedAt": NOW, "processedFor": NOW, "status": "failed", "error": "ses_error"}
+    _items(table, book=_book("a", kindle=previous), settings={"kindleEmail": "me@kindle.com"})
+
+    books.resend_kindle("u1", "a")
+
+    update, _ = _transaction(dynamodb)
+    assert _plain(update["ExpressionAttributeValues"])[":kindle"] == {
+        "requestedAt": NOW,
+        "status": "sending",
+    }
+
+
 @pytest.mark.parametrize(
     ("book", "settings", "code"),
     [

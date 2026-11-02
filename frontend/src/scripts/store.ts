@@ -49,7 +49,7 @@ export interface Book {
   file: { name: string; size?: number };
   added: string;
   history: { at: string; kind: EventKind; text: string }[];
-  kindle: { status: 'sending' | 'sent' | 'failed'; at: string } | null;
+  kindle: { status: 'sending' | 'sent' | 'failed'; at: string; error?: string } | null;
   ingest: 'pending' | 'ready' | 'failed';
   ingestError?: string;
 }
@@ -69,6 +69,15 @@ export const uid = () => 'b' + Date.now().toString(36) + Math.random().toString(
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
+const KINDLE_ERRORS: Record<string, string> = {
+  too_large: 'el EPUB pesa más de 28 MB',
+  kindle_email_missing: 'falta tu correo de Kindle en Ajustes',
+  ses_error: 'el servidor de correo rechazó el envío',
+  ingest_failed: 'el EPUB no se pudo procesar',
+};
+
+export const kindleErrorText = (code?: string) => (code ? KINDLE_ERRORS[code] ?? code : '');
+
 function eventText(ev: ApiEvent): string {
   const d = ev.data;
   switch (ev.kind) {
@@ -82,7 +91,7 @@ function eventText(ev: ApiEvent): string {
     }
     case 'kindle_requested': return 'Envío al Kindle pedido';
     case 'kindle_sent': return 'Aceptado por el servidor de correo';
-    case 'kindle_failed': return 'Falló el envío al Kindle' + (str(d.error) ? ': ' + str(d.error) : '');
+    case 'kindle_failed': return 'Falló el envío al Kindle' + (str(d.error) ? ': ' + kindleErrorText(str(d.error)) : '');
     default: return String(ev.kind);
   }
 }
@@ -104,7 +113,7 @@ function toBook(b: ApiBook, history: Book['history']): Book {
     file: { name: b.epubFileName, size: b.epubSize },
     added: b.createdAt,
     history,
-    kindle: k?.status ? { status: k.status, at: k.at ?? k.requestedAt ?? b.updatedAt } : null,
+    kindle: k?.status ? { status: k.status, at: k.at ?? k.requestedAt ?? b.updatedAt, error: k.error } : null,
     ingest: b.ingest,
     ingestError: b.ingestError,
   };

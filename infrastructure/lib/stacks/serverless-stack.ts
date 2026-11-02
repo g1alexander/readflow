@@ -7,10 +7,20 @@ import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Rule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Architecture, Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import {
+  Architecture,
+  Code,
+  FilterCriteria,
+  FilterRule,
+  Function,
+  Runtime,
+  StartingPosition,
+} from 'aws-cdk-lib/aws-lambda';
 import { SqsDestination } from 'aws-cdk-lib/aws-lambda-destinations';
+import { DynamoEventSource, SqsDlq } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import type { IBucket } from 'aws-cdk-lib/aws-s3';
+import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import type { Construct } from 'constructs';
 import { join } from 'node:path';
@@ -22,6 +32,8 @@ export interface ServerlessStackProps extends StackProps {
   bucket: IBucket;
   userPool: UserPool;
   userPoolClient: IUserPoolClient;
+  emailIdentity: IEmailIdentity;
+  senderAddress: string;
 }
 
 export class ServerlessStack extends Stack {
@@ -30,9 +42,10 @@ export class ServerlessStack extends Stack {
   constructor(scope: Construct, id: string, props: ServerlessStackProps) {
     super(scope, id, props);
 
-    const code = (otherFunction: string) =>
+    const functions = ['api', 'metadata', 'kindle'];
+    const code = (own: string) =>
       Code.fromAsset(join(__dirname, '../../../serverless/src'), {
-        exclude: ['**/__pycache__', otherFunction],
+        exclude: ['**/__pycache__', ...functions.filter((name) => name !== own)],
       });
     const environment = {
       TABLE_NAME: props.table.tableName,
@@ -48,7 +61,7 @@ export class ServerlessStack extends Stack {
       functionName: `${config.appName}-api`,
       runtime: Runtime.PYTHON_3_13,
       architecture: Architecture.ARM_64,
-      code: code('metadata'),
+      code: code('api'),
       handler: 'api.handler.handler',
       memorySize: 256,
       timeout: Duration.seconds(10),
@@ -88,7 +101,7 @@ export class ServerlessStack extends Stack {
       functionName: `${config.appName}-metadata`,
       runtime: Runtime.PYTHON_3_13,
       architecture: Architecture.ARM_64,
-      code: code('api'),
+      code: code('metadata'),
       handler: 'metadata.handler.handler',
       memorySize: 512,
       timeout: Duration.seconds(60),
@@ -115,6 +128,62 @@ export class ServerlessStack extends Stack {
       },
       targets: [new LambdaFunction(metadataFunction)],
     });
+
+    const kindleFailures = new Queue(this, 'KindleFailures', {
+      queueName: `${config.appName}-kindle-failures`,
+      retentionPeriod: Duration.days(14),
+      enforceSSL: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    const kindleFunction = new Function(this, 'KindleFunction', {
+      functionName: `${config.appName}-kindle`,
+      runtime: Runtime.PYTHON_3_13,
+      architecture: Architecture.ARM_64,
+      code: code('kindle'),
+      handler: 'kindle.handler.handler',
+      memorySize: 512,
+      timeout: Duration.seconds(60),
+      environment: { ...environment, SENDER_ADDRESS: props.senderAddress },
+      logGroup: new LogGroup(this, 'KindleFunctionLogs', {
+        retention: RetentionDays.ONE_WEEK,
+        removalPolicy: RemovalPolicy.DESTROY,
+      }),
+    });
+    props.table.grant(
+      kindleFunction,
+      'dynamodb:GetItem',
+      'dynamodb:UpdateItem',
+      'dynamodb:PutItem',
+    );
+    kindleFunction.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['s3:GetObject'],
+        resources: [props.bucket.arnForObjects('users/*/books/*/book.epub')],
+      }),
+    );
+    props.emailIdentity.grant(kindleFunction, 'ses:SendEmail');
+    kindleFunction.addEventSource(
+      new DynamoEventSource(props.table, {
+        startingPosition: StartingPosition.LATEST,
+        batchSize: 1,
+        retryAttempts: 2,
+        bisectBatchOnError: true,
+        onFailure: new SqsDlq(kindleFailures),
+        filters: [
+          FilterCriteria.filter({
+            eventName: FilterRule.isEqual('MODIFY'),
+            dynamodb: {
+              NewImage: {
+                entity: { S: FilterRule.isEqual('BOOK') },
+                ingest: { S: FilterRule.isEqual('ready') },
+                kindle: { M: { requestedAt: { S: FilterRule.exists() } } },
+              },
+            },
+          }),
+        ],
+      }),
+    );
 
     const api = new HttpApi(this, 'HttpApi', {
       createDefaultStage: false,

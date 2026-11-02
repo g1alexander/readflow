@@ -1,4 +1,4 @@
-import { STATES, TYPES, isState, isType, getBook, fetchBook, moveBook, sendToKindle, updateBook, removeBook, onChange, pollPending, watchBook, showError, type Book } from './store';
+import { STATES, TYPES, isState, isType, getBook, fetchBook, moveBook, sendToKindle, kindleErrorText, updateBook, removeBook, onChange, pollPending, watchBook, showError, type Book } from './store';
 import { listAuthors, ApiError, type BookPatch } from './api';
 import { $, esc, icon, coverHTML, fmtDate, fmtDateTime, fmtSize, pill, toast, btn, ICON_SM, STATE_BTN, FIELD } from './ui';
 
@@ -47,6 +47,7 @@ export async function initDetail() {
 
   const states = $('#states');
   const kindlePill = $('#kindle-pill');
+  const kindleError = $('#kindle-error');
   const form = $<HTMLFormElement>('#edit-form');
   const fName = $<HTMLInputElement>('#f-name');
   const fAuthors = $('#f-authors');
@@ -94,6 +95,9 @@ export async function initDetail() {
     const [tone, text] = book.kindle ? KINDLE_PILL[book.kindle.status] : ['state', 'Sin enviar'] as const;
     kindlePill.className = pill(tone);
     kindlePill.textContent = text;
+    const reason = book.kindle?.status === 'failed' ? kindleErrorText(book.kindle.error) : '';
+    kindleError.hidden = !reason;
+    kindleError.textContent = reason ? 'Motivo: ' + reason : '';
 
     const events = book.history;
     $('#timeline').innerHTML = events.map((ev, i) => {

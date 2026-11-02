@@ -39,8 +39,9 @@ def _upload(s3, data):
     s3.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=data))}
 
 
-def _transaction(dynamodb):
-    update, put = dynamodb.transact_write_items.call_args.kwargs["TransactItems"]
+def _transaction(dynamodb, index=0):
+    call = dynamodb.transact_write_items.call_args_list[index]
+    update, put = call.kwargs["TransactItems"]
     update = update["Update"]
     names = update["ExpressionAttributeNames"]
     values = {k: _deserialize(v) for k, v in update["ExpressionAttributeValues"].items()}
@@ -182,6 +183,42 @@ def test_marks_invalid_epubs_failed(clients):
     assert event["data"] == {"error": "not a zip file"}
     dynamodb.put_item.assert_not_called()
     s3.put_object.assert_not_called()
+
+
+def test_fails_a_pending_kindle_request_when_the_epub_is_invalid(clients):
+    dynamodb, s3 = clients
+    _upload(s3, b"not a zip")
+
+    handler.handler(_event(), None)
+
+    update, item = dynamodb.transact_write_items.call_args_list[1].kwargs["TransactItems"]
+    update = update["Update"]
+    values = {k: _deserialize(v) for k, v in update["ExpressionAttributeValues"].items()}
+    assert update["ConditionExpression"] == "#ingest = :ingestFailed AND #kindle.#status = :sending"
+    assert values == {
+        ":ingestFailed": "failed",
+        ":sending": "sending",
+        ":failed": "failed",
+        ":error": "ingest_failed",
+        ":now": NOW,
+    }
+    event = {k: _deserialize(v) for k, v in item["Put"]["Item"].items()}
+    assert event["kind"] == "kindle_failed"
+    assert event["data"] == {"error": "ingest_failed"}
+
+
+def test_ignores_invalid_epubs_without_a_pending_kindle_request(clients):
+    dynamodb, s3 = clients
+    _upload(s3, b"not a zip")
+    dynamodb.transact_write_items.side_effect = [
+        None,
+        _client_error(
+            "TransactionCanceledException",
+            CancellationReasons=[{"Code": "ConditionalCheckFailed"}, {"Code": "None"}],
+        ),
+    ]
+
+    handler.handler(_event(), None)
 
 
 def test_skips_books_that_are_no_longer_pending(clients):

@@ -18,7 +18,7 @@ export interface ApiBook {
   epubFileName: string;
   coverKey?: string;
   coverUrl?: string;
-  kindle?: { requestedAt?: string; status?: 'sending' | 'sent' | 'failed'; at?: string };
+  kindle?: { requestedAt?: string; status?: 'sending' | 'sent' | 'failed'; at?: string; error?: string };
   createdAt: string;
   updatedAt: string;
 }

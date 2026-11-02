@@ -44,6 +44,7 @@ const author = 'text-[17px] text-muted max-md:text-[15px]';
 
         <Panel title="Envío al Kindle" titleId="kindle-title">
           <span slot="head" id="kindle-pill"></span>
+          <p class="text-sm text-err-ink" id="kindle-error" hidden></p>
           <ol class="flex flex-col gap-3.5" id="timeline"></ol>
           <div class="flex flex-wrap gap-2.5">
             <button class={btn('outline')} type="button" id="resend"><Icon name="mail" /> Reenviar al Kindle</button>

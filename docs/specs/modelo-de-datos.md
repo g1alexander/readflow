@@ -59,6 +59,9 @@ BOOK#<ulid>     EVENT#<ulid>        EVENT
 | `processedFor` | string ISO | Valor de `requestedAt` que la Lambda de Kindle ya tomó (idempotencia) |
 | `status` | `sending` \| `sent` \| `failed` | `sending` lo escribe la API junto con `requestedAt`; `sent` y `failed`, la Lambda |
 | `at` | string ISO | Fecha del último resultado |
+| `error` | string | Solo con `status=failed`; lo escribe la Lambda. Valores: `too_large` (EPUB > 28 MB), `kindle_email_missing` (Settings sin `kindleEmail` al procesar), `ses_error` (SES rechazó el envío; el mensaje de SES va al log, no al ítem), `ingest_failed` (lo escribe la Lambda de metadata: ver #5) |
+
+La API reemplaza el mapa `kindle` completo en cada pedido (#6, #7), así que `processedFor`, `at` y `error` del pedido anterior desaparecen.
 
 `sent` significa que SES aceptó el correo, no que el Kindle lo recibió; SES no puede confirmar la entrega.
 
@@ -88,7 +91,7 @@ El historial del libro vive en su propia partición, así que el Query del table
 | `entity` | `"EVENT"` | |
 | `bookId` | string | |
 | `kind` | enum | `uploaded`, `ingest_ready`, `ingest_failed`, `status_changed`, `kindle_requested`, `kindle_sent`, `kindle_failed` |
-| `data` | map | Depende de `kind`: `uploaded` → `{fileName, size}`, `ingest_ready` → `{}`, `ingest_failed` → `{error}` (igual a `ingestError`), `status_changed` → `{from, to}`, `kindle_requested` → `{}` |
+| `data` | map | Depende de `kind`: `uploaded` → `{fileName, size}`, `ingest_ready` → `{}`, `ingest_failed` → `{error}` (igual a `ingestError`), `status_changed` → `{from, to}`, `kindle_requested` → `{}`, `kindle_sent` → `{}`, `kindle_failed` → `{error}` (igual a `kindle.error`) |
 | `at` | string ISO | |
 
 El texto que muestra el timeline lo arma el front a partir de `kind` + `data`.
@@ -109,11 +112,11 @@ El texto que muestra el timeline lo arma el front a partir de `kind` + `data`.
 | 2 | Detalle de un libro | API | `GetItem USER#<sub> / BOOK#<id>` y después `Query PK=BOOK#<id> AND begins_with(SK, "EVENT#")`, `ScanIndexForward=false`. Si el GetItem no devuelve nada → 404 sin leer eventos (esa lectura es la verificación de dueño) |
 | 3 | Autocompletar autores | API | `Query PK=USER#<sub> AND begins_with(SK, "AUTHOR#")` |
 | 4 | Crear libro (`POST /uploads`) | API | `TransactWriteItems`: Put Book (`status=toread`, `ingest=pending`, `attribute_not_exists(PK)`) + Put Event `uploaded`. El body no trae `status`: todo libro nace en `toread` y el envío a Kindle solo sale del patrón #6. Devuelve la presigned URL de `epubKey` |
-| 5 | Guardar metadata | Lambda metadata | Saca `<sub>` e `<id>` de la key S3. Put condicional por cada autor (§Author). `TransactWriteItems`: Update Book (`name`, `authors`, `year`, `coverKey`, `epubSize`, `ingest=ready`, condición `ingest = pending`) + Put Event `ingest_ready`. Si el EPUB es inválido: `epubSize`, `ingest=failed` + `ingestError` + Event `ingest_failed` (misma condición). Otros errores no tocan el libro: van a la cola de fallos |
+| 5 | Guardar metadata | Lambda metadata | Saca `<sub>` e `<id>` de la key S3. Put condicional por cada autor (§Author). `TransactWriteItems`: Update Book (`name`, `authors`, `year`, `coverKey`, `epubSize`, `ingest=ready`, condición `ingest = pending`) + Put Event `ingest_ready`. Si el EPUB es inválido: `epubSize`, `ingest=failed` + `ingestError` + Event `ingest_failed` (misma condición); después, si había un pedido de envío en curso, otro `TransactWriteItems`: Update `kindle.status=failed`, `kindle.at`, `kindle.error=ingest_failed` (condición `ingest = failed AND kindle.status = sending`) + Event `kindle_failed {error: ingest_failed}`. Sin pedido en curso, la condición falla y no se escribe nada (el filtro del Stream exige `ingest=ready`, así que la Lambda de Kindle nunca vería ese pedido). Otros errores no tocan el libro: van a la cola de fallos |
 | 6 | Cambiar estado | API | `TransactWriteItems`: Update `status` (+ `kindle.requestedAt=now`, `kindle.status=sending` si pasa a `reading` desde otro estado) + Put Event `status_changed` (+ `kindle_requested`) |
 | 7 | Reenviar a Kindle | API | `TransactWriteItems`: Update `kindle.requestedAt=now`, `kindle.status=sending` + Put Event `kindle_requested` |
 | 8 | Editar campos (`name`, `authors`, `type`, `score`, `year`) | API | `UpdateItem` con `attribute_exists(PK)`. Autores nuevos: Put condicional antes |
-| 9 | Resultado del envío | Lambda Kindle | `TransactWriteItems`: Update `kindle.status` (`sent`/`failed`) y `kindle.at` + Put Event `kindle_sent`/`kindle_failed` |
+| 9 | Resultado del envío | Lambda Kindle | `TransactWriteItems`: Update `kindle.status` (`sent`/`failed`), `kindle.at` (+ `kindle.error` si `failed`) con condición `kindle.requestedAt = :req` + Put Event `kindle_sent`/`kindle_failed`. Si la condición falla, hubo un pedido más nuevo: no se escribe nada |
 | 10 | Borrar libro | API | `GetItem` del Book (verificación de dueño, 404 si no existe); borrar el prefijo S3 del libro; Query + `BatchWriteItem` de los eventos; al final Delete Book. El Book va último para que repetir el borrado tras un fallo termine el trabajo |
 | 11 | Leer/guardar ajustes | API | `GetItem` / `PutItem USER#<sub> / SETTINGS` |
 | 12 | Polling de `ingest` y `kindle` | Front | Repite #2 (o #1) cada 3 s mientras haya `ingest=pending` o `kindle.status=sending` con menos de 2 min desde `createdAt` / `kindle.requestedAt`. Push: [ALE-10](https://linear.app/g1alexander/issue/ALE-10) |
@@ -165,9 +168,13 @@ El filtro no puede comparar la imagen vieja con la nueva, así que la Lambda dec
 
 Si no se cumple ninguna (p. ej. la Lambda acaba de escribir `kindle.status`, o el usuario editó el `score`), termina sin hacer nada.
 
-**Idempotencia:** el Stream entrega al menos una vez. Antes de enviar, la Lambda hace `UpdateItem SET kindle.processedFor = :req` con condición `kindle.processedFor <> :req OR attribute_not_exists(kindle.processedFor)`. Si falla la condición, ese pedido ya se tomó y no reenvía.
+**Idempotencia:** el Stream entrega al menos una vez. Antes de enviar, la Lambda hace `UpdateItem SET kindle.processedFor = :req` con condición `kindle.processedFor <> :req OR attribute_not_exists(kindle.processedFor)`. Si falla la condición, ese pedido ya se tomó y no reenvía. La condición también exige `kindle.requestedAt = :req`, así que un registro viejo no toma un pedido más nuevo. Si la Lambda cae después de tomar el pedido, hace `REMOVE kindle.processedFor` (condición `= :req`) antes de relanzar el error, para que el reintento del Stream lo vuelva a tomar.
 
 Sin `INSERT`: un Book nace siempre con `ingest=pending`, así que el primer envío posible es el MODIFY de #5.
+
+**Envío:** lee `kindleEmail` de Settings y el EPUB de S3 al procesar. Si el objeto pesa más de 28 MB (SES acepta 40 MB por mensaje y el adjunto crece ~33 % en base64) → `failed` con `too_large`, sin llamar a SES. Email: SES v2 `SendEmail` con contenido Raw; From = remitente del `MailStack`, To = `kindleEmail`, asunto = `name`, adjunto `<slug del name>.epub` (`application/epub+zip`).
+
+**Fallos:** los errores de envío (`too_large`, `kindle_email_missing`, `ses_error`) se escriben como `failed` según #9 y la Lambda termina OK; no hay reintento automático, el usuario reenvía (#7). Solo una caída de la Lambda (código o infraestructura) reintenta: event source mapping con `batchSize 1`, 2 reintentos, `bisectBatchOnError` y destino on-failure `readflow-kindle-failures` (SQS, 14 días).
 
 ## S3 — bucket de EPUB
 

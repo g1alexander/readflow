@@ -15,7 +15,7 @@ const env = {
 
 const storage = new StorageStack(app, 'ReadflowStorage', { env });
 
-new MailStack(app, 'ReadflowMail', { env });
+const mail = new MailStack(app, 'ReadflowMail', { env });
 
 const auth = new AuthStack(app, 'ReadflowAuth', { env });
 
@@ -25,6 +25,8 @@ const serverless = new ServerlessStack(app, 'ReadflowServerless', {
   bucket: storage.bucket,
   userPool: auth.userPool,
   userPoolClient: auth.userPoolClient,
+  emailIdentity: mail.emailIdentity,
+  senderAddress: mail.senderAddress,
 });
 
 new FrontendStack(app, 'ReadflowFrontend', {

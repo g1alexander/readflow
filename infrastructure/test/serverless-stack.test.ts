@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
+import { MailStack } from '../lib/stacks/mail-stack.js';
 import { ServerlessStack } from '../lib/stacks/serverless-stack.js';
 import { StorageStack } from '../lib/stacks/storage-stack.js';
 
@@ -13,12 +14,15 @@ const corsOrigins = ['http://localhost:4321', 'https://main.example.amplifyapp.c
 function createServerless(app: App, id: string) {
   const storage = new StorageStack(app, `${id}Storage`, { env });
   const auth = new AuthStack(app, `${id}Auth`, { env });
+  const mail = new MailStack(app, `${id}Mail`, { env });
   return new ServerlessStack(app, id, {
     env,
     table: storage.table,
     bucket: storage.bucket,
     userPool: auth.userPool,
     userPoolClient: auth.userPoolClient,
+    emailIdentity: mail.emailIdentity,
+    senderAddress: mail.senderAddress,
   });
 }
 
@@ -27,26 +31,29 @@ describe('ServerlessStack', () => {
   let outdir: string;
 
   beforeAll(() => {
-    const app = new App({ context: { corsOrigins } });
+    const app = new App({ context: { corsOrigins, mailDomain: 'example.com' } });
     template = Template.fromStack(createServerless(app, 'TestServerless'));
     outdir = app.synth().directory;
   });
 
   it.each([
-    ['readflow-api', 'api', 'metadata'],
-    ['readflow-metadata', 'metadata', 'api'],
-  ])('names %s and packages only its own code plus common', (name, own, other) => {
+    ['readflow-api', 'api'],
+    ['readflow-metadata', 'metadata'],
+    ['readflow-kindle', 'kindle'],
+  ])('names %s and packages only its own code plus common', (name, own) => {
     const [fn] = Object.values(
       template.findResources('AWS::Lambda::Function', { Properties: { FunctionName: name } }),
     );
     const assetDir = join(outdir, `asset.${fn.Properties.Code.S3Key.replace('.zip', '')}`);
     expect(existsSync(join(assetDir, own, 'handler.py'))).toBe(true);
     expect(existsSync(join(assetDir, 'common', 'ulid.py'))).toBe(true);
-    expect(existsSync(join(assetDir, other))).toBe(false);
+    for (const other of ['api', 'metadata', 'kindle'].filter((dir) => dir !== own)) {
+      expect(existsSync(join(assetDir, other))).toBe(false);
+    }
   });
 
   it('runs the api Lambda on Python 3.13 arm64 with the table and bucket names', () => {
-    template.resourceCountIs('AWS::Lambda::Function', 2);
+    template.resourceCountIs('AWS::Lambda::Function', 3);
     template.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'python3.13',
       Architectures: ['arm64'],
@@ -79,7 +86,7 @@ describe('ServerlessStack', () => {
   });
 
   it('keeps the Lambda logs one week and deletes them with the stack', () => {
-    template.resourceCountIs('AWS::Logs::LogGroup', 2);
+    template.resourceCountIs('AWS::Logs::LogGroup', 3);
     template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 7 });
     template.allResources('AWS::Logs::LogGroup', {
       DeletionPolicy: 'Delete',
@@ -177,6 +184,89 @@ describe('ServerlessStack', () => {
         { Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('MetadataFunction'), 'Arn'] } },
       ],
     });
+  });
+
+  it('runs the kindle Lambda with 512 MB, 60 s and the sender address', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'readflow-kindle',
+      Runtime: 'python3.13',
+      Architectures: ['arm64'],
+      Handler: 'kindle.handler.handler',
+      MemorySize: 512,
+      Timeout: 60,
+      Environment: {
+        Variables: {
+          TABLE_NAME: { 'Fn::ImportValue': Match.anyValue() },
+          BUCKET_NAME: { 'Fn::ImportValue': Match.anyValue() },
+          SENDER_ADDRESS: 'kindle@example.com',
+        },
+      },
+      LoggingConfig: { LogGroup: { Ref: Match.stringLikeRegexp('KindleFunctionLogs') } },
+    });
+  });
+
+  it('consumes the table stream with the spec filter and a failure queue', () => {
+    template.resourceCountIs('AWS::SQS::Queue', 2);
+    template.hasResourceProperties('AWS::SQS::Queue', {
+      QueueName: 'readflow-kindle-failures',
+      MessageRetentionPeriod: 1209600,
+    });
+    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
+      FunctionName: { Ref: Match.stringLikeRegexp('KindleFunction') },
+      EventSourceArn: { 'Fn::ImportValue': Match.stringLikeRegexp('StreamArn') },
+      StartingPosition: 'LATEST',
+      BatchSize: 1,
+      MaximumRetryAttempts: 2,
+      BisectBatchOnFunctionError: true,
+      DestinationConfig: {
+        OnFailure: {
+          Destination: { 'Fn::GetAtt': [Match.stringLikeRegexp('KindleFailures'), 'Arn'] },
+        },
+      },
+      FilterCriteria: {
+        Filters: [
+          {
+            Pattern: JSON.stringify({
+              eventName: ['MODIFY'],
+              dynamodb: {
+                NewImage: {
+                  entity: { S: ['BOOK'] },
+                  ingest: { S: ['ready'] },
+                  kindle: { M: { requestedAt: { S: [{ exists: true }] } } },
+                },
+              },
+            }),
+          },
+        ],
+      },
+    });
+  });
+
+  it('grants kindle item reads/writes, EPUB reads and SES on the identity only', () => {
+    const statements = statementsOf('KindleFunctionServiceRole');
+    const actions = statements.flatMap((statement) => statement.Action);
+    expect(actions).toEqual(
+      expect.arrayContaining([
+        'dynamodb:GetItem',
+        'dynamodb:UpdateItem',
+        'dynamodb:PutItem',
+        'dynamodb:GetRecords',
+        's3:GetObject',
+        'ses:SendEmail',
+        'sqs:SendMessage',
+      ]),
+    );
+    expect(
+      actions.some((action) =>
+        /^(dynamodb:(Query|Scan|Delete|BatchWrite)|s3:(Put|Delete|List)|ses:SendRawEmail)/.test(
+          action,
+        ),
+      ),
+    ).toBe(false);
+    const resourcesOf = (action: string) =>
+      JSON.stringify(statements.filter((statement) => [statement.Action].flat().includes(action)));
+    expect(resourcesOf('s3:GetObject')).toContain('/users/*/books/*/book.epub');
+    expect(resourcesOf('ses:SendEmail')).toContain(':identity/');
   });
 
   it('validates Cognito access tokens with a JWT authorizer', () => {

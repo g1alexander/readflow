@@ -1,4 +1,4 @@
-import { STATES, isState, load, getBook, moveBook, onChange, pollPending, showError, type Book, type StateId } from './store';
+import { STATES, isState, load, getBook, kindleErrorText, moveBook, onChange, pollPending, showError, type Book, type StateId } from './store';
 import { getSettings } from './api';
 import { $, esc, icon, coverHTML, fmtDate, pill, ICON_SM, STATE_BTN } from './ui';
 
@@ -26,7 +26,7 @@ function kindleStatusHTML(b: Book) {
   const base = 'mt-auto flex items-center gap-1.5 text-[13px] font-medium max-md:text-xs max-md:font-semibold';
   if (b.kindle?.status === 'sending') return `<span class="${base} text-onhold-ink">${icon('clock', ICON_SM)}Enviando al Kindle…</span>`;
   if (b.kindle?.status === 'sent') return `<span class="${base} text-reading-ink">${icon('check', ICON_SM)}En tu Kindle desde el ${fmtDate(b.kindle.at)}</span>`;
-  if (b.kindle?.status === 'failed') return `<span class="${base} text-err-ink">No se pudo enviar al Kindle</span>`;
+  if (b.kindle?.status === 'failed') return `<span class="${base} text-err-ink">No se pudo enviar${b.kindle.error ? ': ' + esc(kindleErrorText(b.kindle.error)) : ' al Kindle'}</span>`;
   return `<span class="${base}">Aún no enviado</span>`;
 }
 

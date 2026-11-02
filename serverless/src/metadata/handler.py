@@ -59,6 +59,7 @@ def handler(event, context):
             "ingest_failed",
             {"error": str(error)},
         )
+        _fail_kindle(book_id, _values({"PK": f"USER#{sub}", "SK": f"BOOK#{book_id}"}))
         return
     fields = {
         "authors": _upsert_authors(sub, metadata.authors),
@@ -165,3 +166,60 @@ def _finish(sub: str, book_id: str, fields: dict, kind: str, data: dict) -> None
         if not reasons or reasons[0].get("Code") != "ConditionalCheckFailed":
             raise
         logger.info("Book %s is no longer pending, skipping", book_id)
+
+
+def _fail_kindle(book_id: str, key: dict) -> None:
+    now = _now()
+    table = os.environ["TABLE_NAME"]
+    try:
+        _dynamodb().transact_write_items(
+            TransactItems=[
+                {
+                    "Update": {
+                        "TableName": table,
+                        "Key": key,
+                        "UpdateExpression": "SET #kindle.#status = :failed, #kindle.#at = :now, "
+                        "#kindle.#error = :error, #updatedAt = :now",
+                        "ConditionExpression": "#ingest = :ingestFailed "
+                        "AND #kindle.#status = :sending",
+                        "ExpressionAttributeNames": {
+                            "#ingest": "ingest",
+                            "#kindle": "kindle",
+                            "#status": "status",
+                            "#at": "at",
+                            "#error": "error",
+                            "#updatedAt": "updatedAt",
+                        },
+                        "ExpressionAttributeValues": _values(
+                            {
+                                ":ingestFailed": "failed",
+                                ":sending": "sending",
+                                ":failed": "failed",
+                                ":error": "ingest_failed",
+                                ":now": now,
+                            }
+                        ),
+                    }
+                },
+                {
+                    "Put": {
+                        "TableName": table,
+                        "Item": _values(
+                            {
+                                "PK": f"BOOK#{book_id}",
+                                "SK": f"EVENT#{new_ulid()}",
+                                "entity": "EVENT",
+                                "bookId": book_id,
+                                "kind": "kindle_failed",
+                                "data": {"error": "ingest_failed"},
+                                "at": now,
+                            }
+                        ),
+                    }
+                },
+            ]
+        )
+    except ClientError as error:
+        reasons = error.response.get("CancellationReasons", [])
+        if not reasons or reasons[0].get("Code") != "ConditionalCheckFailed":
+            raise
