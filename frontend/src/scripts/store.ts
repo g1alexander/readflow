@@ -195,15 +195,17 @@ export async function removeBook(id: string): Promise<boolean> {
 
 const POLL_MS = 3000;
 const POLL_LIMIT_MS = 2 * 60 * 1000;
-const pending = (b: Book) => b.ingest === 'pending' || b.kindle?.status === 'sending';
+const recent = (at: string) => Date.now() - Date.parse(at) < POLL_LIMIT_MS;
+const pending = (b: Book) =>
+  (b.ingest === 'pending' && recent(b.added)) || (b.kindle?.status === 'sending' && recent(b.kindle.at));
 let polling = false;
 let detailId: string | null = null;
+const watched = () => (detailId ? books.filter((b) => b.id === detailId) : books);
 
 export async function pollPending() {
   if (polling) return;
   polling = true;
-  const until = Date.now() + POLL_LIMIT_MS;
-  while (books.some(pending) && Date.now() < until) {
+  while (watched().some(pending)) {
     await new Promise((resolve) => setTimeout(resolve, POLL_MS));
     try {
       const before = new Map(books.map((b) => [b.id, b.kindle?.status]));

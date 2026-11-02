@@ -116,7 +116,7 @@ El texto que muestra el timeline lo arma el front a partir de `kind` + `data`.
 | 9 | Resultado del envío | Lambda Kindle | `TransactWriteItems`: Update `kindle.status` (`sent`/`failed`) y `kindle.at` + Put Event `kindle_sent`/`kindle_failed` |
 | 10 | Borrar libro | API | `GetItem` del Book (verificación de dueño, 404 si no existe); borrar el prefijo S3 del libro; Query + `BatchWriteItem` de los eventos; al final Delete Book. El Book va último para que repetir el borrado tras un fallo termine el trabajo |
 | 11 | Leer/guardar ajustes | API | `GetItem` / `PutItem USER#<sub> / SETTINGS` |
-| 12 | Polling de `ingest` | Front | Repite #2 (o #1) hasta `ingest != pending`. Push: [ALE-10](https://linear.app/g1alexander/issue/ALE-10) |
+| 12 | Polling de `ingest` y `kindle` | Front | Repite #2 (o #1) cada 3 s mientras haya `ingest=pending` o `kindle.status=sending` con menos de 2 min desde `createdAt` / `kindle.requestedAt`. Push: [ALE-10](https://linear.app/g1alexander/issue/ALE-10) |
 
 ## Ciclo de vida de `ingest`
 
