@@ -1,4 +1,4 @@
-import { STATES, isState, load, getBook, kindleErrorText, moveBook, onChange, pollPending, showError, type Book, type StateId } from './store';
+import { STATES, isState, load, getBook, kindleErrorText, moveBook, onChange, subscribe, showError, type Book, type StateId } from './store';
 import { getSettings } from './api';
 import { $, esc, icon, coverHTML, fmtDate, pill, ICON_SM, STATE_BTN } from './ui';
 
@@ -177,5 +177,5 @@ export async function initBoard() {
     return;
   }
   render();
-  pollPending();
+  subscribe();
 }

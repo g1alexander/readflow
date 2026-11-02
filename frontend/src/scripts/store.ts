@@ -1,4 +1,7 @@
 import { ApiError, listBooks, getBook as apiGetBook, patchBook, resendKindle, deleteBook as apiDeleteBook, type ApiBook, type ApiEvent, type BookPatch } from './api';
+import { CONNECTION_STATE_CHANGE, ConnectionState, events } from 'aws-amplify/api';
+import { Hub } from 'aws-amplify/utils';
+import { userSub } from './auth';
 import { toast } from './ui';
 
 export const STATES = [
@@ -175,7 +178,6 @@ export async function moveBook(id: string, state: StateId) {
   if (!updated) return;
   if (state === 'reading') toast('Enviando «' + updated.title + '» a tu Kindle…', 'mail');
   else toast('Movido a ' + stateName(state));
-  pollPending();
 }
 
 export async function sendToKindle(id: string) {
@@ -183,7 +185,6 @@ export async function sendToKindle(id: string) {
     const book = upsert((await resendKindle(id)).book);
     toast('Enviando «' + book.title + '» a tu Kindle…', 'mail');
     notify();
-    pollPending();
   } catch (err) {
     showError(err);
   }
@@ -202,35 +203,48 @@ export async function removeBook(id: string): Promise<boolean> {
   }
 }
 
-const POLL_MS = 3000;
-const POLL_LIMIT_MS = 2 * 60 * 1000;
-const recent = (at: string) => Date.now() - Date.parse(at) < POLL_LIMIT_MS;
-const pending = (b: Book) =>
-  (b.ingest === 'pending' && recent(b.added)) || (b.kindle?.status === 'sending' && recent(b.kindle.at));
-let polling = false;
 let detailId: string | null = null;
-const watched = () => (detailId ? books.filter((b) => b.id === detailId) : books);
+let subscribed = false;
 
-export async function pollPending() {
-  if (polling) return;
-  polling = true;
-  while (watched().some(pending)) {
-    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-    try {
-      const before = new Map(books.map((b) => [b.id, b.kindle?.status]));
-      if (detailId) await fetchBook(detailId);
-      else await load();
-      for (const b of books) {
-        if (before.get(b.id) !== 'sending') continue;
-        if (b.kindle?.status === 'sent') toast('Listo: «' + b.title + '» ya está en tu Kindle', 'check');
-        if (b.kindle?.status === 'failed') toast('No se pudo enviar «' + b.title + '» al Kindle');
-      }
-      notify();
-    } catch (err) {
-      console.error(err);
-    }
+function toastKindle(book: Book, before: string | undefined) {
+  if (before !== 'sending') return;
+  if (book.kindle?.status === 'sent') toast('Listo: «' + book.title + '» ya está en tu Kindle', 'check');
+  if (book.kindle?.status === 'failed') toast('No se pudo enviar «' + book.title + '» al Kindle');
+}
+
+async function refresh(id?: string) {
+  try {
+    const before = new Map(books.map((b) => [b.id, b.kindle?.status]));
+    if (id) await fetchBook(id);
+    else if (detailId) await fetchBook(detailId);
+    else await load();
+    for (const b of books) if (!id || b.id === id) toastKindle(b, before.get(b.id));
+    notify();
+  } catch (err) {
+    console.error(err);
   }
-  polling = false;
+}
+
+export async function subscribe() {
+  if (subscribed) return;
+  subscribed = true;
+  Hub.listen('api', ({ payload }) => {
+    const data = payload.data as { connectionState?: ConnectionState } | undefined;
+    if (payload.event === CONNECTION_STATE_CHANGE && data?.connectionState === ConnectionState.Connected) refresh();
+  });
+  try {
+    const channel = await events.connect('/readflow/users/' + (await userSub()));
+    channel.subscribe({
+      next: ({ event }) => {
+        const id = event?.bookId;
+        if (typeof id === 'string' && (!detailId || id === detailId)) refresh(id);
+      },
+      error: (err) => console.error(err),
+    });
+  } catch (err) {
+    subscribed = false;
+    console.error(err);
+  }
 }
 
 export const watchBook = (id: string) => { detailId = id; };

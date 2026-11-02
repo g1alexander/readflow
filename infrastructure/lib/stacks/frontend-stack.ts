@@ -9,6 +9,7 @@ export interface FrontendStackProps extends StackProps {
   userPoolId: string;
   userPoolClientId: string;
   apiUrl: string;
+  eventsEndpoint: string;
 }
 
 export class FrontendStack extends Stack {
@@ -31,6 +32,7 @@ export class FrontendStack extends Stack {
         PUBLIC_COGNITO_USER_POOL_ID: props.userPoolId,
         PUBLIC_COGNITO_USER_POOL_CLIENT_ID: props.userPoolClientId,
         PUBLIC_API_URL: props.apiUrl,
+        PUBLIC_EVENTS_ENDPOINT: props.eventsEndpoint,
       },
       buildSpec: BuildSpec.fromObjectToYaml({
         version: 1,

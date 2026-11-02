@@ -2,6 +2,7 @@ import { CfnOutput, Duration, RemovalPolicy, Stack, type StackProps } from 'aws-
 import { CorsHttpMethod, HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpJwtAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import type { IEventApi } from 'aws-cdk-lib/aws-appsync';
 import type { IUserPoolClient, UserPool } from 'aws-cdk-lib/aws-cognito';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Rule } from 'aws-cdk-lib/aws-events';
@@ -34,6 +35,8 @@ export interface ServerlessStackProps extends StackProps {
   userPoolClient: IUserPoolClient;
   emailIdentity: IEmailIdentity;
   senderAddress: string;
+  eventApi: IEventApi;
+  eventsEndpoint: string;
 }
 
 export class ServerlessStack extends Stack {
@@ -42,7 +45,7 @@ export class ServerlessStack extends Stack {
   constructor(scope: Construct, id: string, props: ServerlessStackProps) {
     super(scope, id, props);
 
-    const functions = ['api', 'metadata', 'kindle'];
+    const functions = ['api', 'metadata', 'kindle', 'notify'];
     const code = (own: string) =>
       Code.fromAsset(join(__dirname, '../../../serverless/src'), {
         exclude: ['**/__pycache__', ...functions.filter((name) => name !== own)],
@@ -180,6 +183,36 @@ export class ServerlessStack extends Stack {
                 kindle: { M: { requestedAt: { S: FilterRule.exists() } } },
               },
             },
+          }),
+        ],
+      }),
+    );
+
+    const notifyFunction = new Function(this, 'NotifyFunction', {
+      functionName: `${config.appName}-notify`,
+      runtime: Runtime.PYTHON_3_13,
+      architecture: Architecture.ARM_64,
+      code: code('notify'),
+      handler: 'notify.handler.handler',
+      memorySize: 256,
+      timeout: Duration.seconds(30),
+      environment: { EVENTS_ENDPOINT: props.eventsEndpoint },
+      logGroup: new LogGroup(this, 'NotifyFunctionLogs', {
+        retention: RetentionDays.ONE_WEEK,
+        removalPolicy: RemovalPolicy.DESTROY,
+      }),
+    });
+    props.eventApi.grantPublish(notifyFunction);
+    notifyFunction.addEventSource(
+      new DynamoEventSource(props.table, {
+        startingPosition: StartingPosition.LATEST,
+        batchSize: 10,
+        retryAttempts: 2,
+        bisectBatchOnError: true,
+        filters: [
+          FilterCriteria.filter({
+            eventName: FilterRule.isEqual('MODIFY'),
+            dynamodb: { NewImage: { entity: { S: FilterRule.isEqual('BOOK') } } },
           }),
         ],
       }),

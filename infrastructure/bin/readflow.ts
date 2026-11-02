@@ -4,6 +4,7 @@ import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { ServerlessStack } from '../lib/stacks/serverless-stack.js';
 import { FrontendStack } from '../lib/stacks/frontend-stack.js';
 import { MailStack } from '../lib/stacks/mail-stack.js';
+import { RealtimeStack } from '../lib/stacks/realtime-stack.js';
 import { StorageStack } from '../lib/stacks/storage-stack.js';
 
 const app = new App();
@@ -19,6 +20,8 @@ const mail = new MailStack(app, 'ReadflowMail', { env });
 
 const auth = new AuthStack(app, 'ReadflowAuth', { env });
 
+const realtime = new RealtimeStack(app, 'ReadflowRealtime', { env, userPool: auth.userPool });
+
 const serverless = new ServerlessStack(app, 'ReadflowServerless', {
   env,
   table: storage.table,
@@ -27,6 +30,8 @@ const serverless = new ServerlessStack(app, 'ReadflowServerless', {
   userPoolClient: auth.userPoolClient,
   emailIdentity: mail.emailIdentity,
   senderAddress: mail.senderAddress,
+  eventApi: realtime.api,
+  eventsEndpoint: realtime.eventsEndpoint,
 });
 
 new FrontendStack(app, 'ReadflowFrontend', {
@@ -34,4 +39,5 @@ new FrontendStack(app, 'ReadflowFrontend', {
   userPoolId: auth.userPool.userPoolId,
   userPoolClientId: auth.userPoolClient.userPoolClientId,
   apiUrl: serverless.apiUrl,
+  eventsEndpoint: realtime.eventsEndpoint,
 });

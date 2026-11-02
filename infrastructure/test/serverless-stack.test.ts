@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { MailStack } from '../lib/stacks/mail-stack.js';
+import { RealtimeStack } from '../lib/stacks/realtime-stack.js';
 import { ServerlessStack } from '../lib/stacks/serverless-stack.js';
 import { StorageStack } from '../lib/stacks/storage-stack.js';
 
@@ -15,6 +16,7 @@ function createServerless(app: App, id: string) {
   const storage = new StorageStack(app, `${id}Storage`, { env });
   const auth = new AuthStack(app, `${id}Auth`, { env });
   const mail = new MailStack(app, `${id}Mail`, { env });
+  const realtime = new RealtimeStack(app, `${id}Realtime`, { env, userPool: auth.userPool });
   return new ServerlessStack(app, id, {
     env,
     table: storage.table,
@@ -23,6 +25,8 @@ function createServerless(app: App, id: string) {
     userPoolClient: auth.userPoolClient,
     emailIdentity: mail.emailIdentity,
     senderAddress: mail.senderAddress,
+    eventApi: realtime.api,
+    eventsEndpoint: realtime.eventsEndpoint,
   });
 }
 
@@ -40,6 +44,7 @@ describe('ServerlessStack', () => {
     ['readflow-api', 'api'],
     ['readflow-metadata', 'metadata'],
     ['readflow-kindle', 'kindle'],
+    ['readflow-notify', 'notify'],
   ])('names %s and packages only its own code plus common', (name, own) => {
     const [fn] = Object.values(
       template.findResources('AWS::Lambda::Function', { Properties: { FunctionName: name } }),
@@ -47,13 +52,13 @@ describe('ServerlessStack', () => {
     const assetDir = join(outdir, `asset.${fn.Properties.Code.S3Key.replace('.zip', '')}`);
     expect(existsSync(join(assetDir, own, 'handler.py'))).toBe(true);
     expect(existsSync(join(assetDir, 'common', 'ulid.py'))).toBe(true);
-    for (const other of ['api', 'metadata', 'kindle'].filter((dir) => dir !== own)) {
+    for (const other of ['api', 'metadata', 'kindle', 'notify'].filter((dir) => dir !== own)) {
       expect(existsSync(join(assetDir, other))).toBe(false);
     }
   });
 
   it('runs the api Lambda on Python 3.13 arm64 with the table and bucket names', () => {
-    template.resourceCountIs('AWS::Lambda::Function', 3);
+    template.resourceCountIs('AWS::Lambda::Function', 4);
     template.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'python3.13',
       Architectures: ['arm64'],
@@ -86,7 +91,7 @@ describe('ServerlessStack', () => {
   });
 
   it('keeps the Lambda logs one week and deletes them with the stack', () => {
-    template.resourceCountIs('AWS::Logs::LogGroup', 3);
+    template.resourceCountIs('AWS::Logs::LogGroup', 4);
     template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 7 });
     template.allResources('AWS::Logs::LogGroup', {
       DeletionPolicy: 'Delete',
@@ -238,6 +243,39 @@ describe('ServerlessStack', () => {
             }),
           },
         ],
+      },
+    });
+  });
+
+  it('feeds notify from the stream with BOOK modifications and lets it publish events', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'readflow-notify',
+      Handler: 'notify.handler.handler',
+      Environment: { Variables: { EVENTS_ENDPOINT: Match.anyValue() } },
+    });
+    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
+      FunctionName: { Ref: Match.stringLikeRegexp('NotifyFunction') },
+      EventSourceArn: { 'Fn::ImportValue': Match.stringLikeRegexp('StreamArn') },
+      StartingPosition: 'LATEST',
+      MaximumRetryAttempts: 2,
+      BisectBatchOnFunctionError: true,
+      FilterCriteria: {
+        Filters: [
+          {
+            Pattern: JSON.stringify({
+              eventName: ['MODIFY'],
+              dynamodb: { NewImage: { entity: { S: ['BOOK'] } } },
+            }),
+          },
+        ],
+      },
+    });
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      Roles: [{ Ref: Match.stringLikeRegexp('NotifyFunctionServiceRole') }],
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({ Action: 'appsync:EventPublish' }),
+        ]),
       },
     });
   });

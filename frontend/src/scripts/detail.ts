@@ -1,4 +1,4 @@
-import { STATES, TYPES, isState, isType, getBook, fetchBook, moveBook, sendToKindle, kindleErrorText, updateBook, removeBook, onChange, pollPending, watchBook, showError, type Book } from './store';
+import { STATES, TYPES, isState, isType, getBook, fetchBook, moveBook, sendToKindle, kindleErrorText, updateBook, removeBook, onChange, subscribe, watchBook, showError, type Book } from './store';
 import { listAuthors, ApiError, type BookPatch } from './api';
 import { $, esc, icon, coverHTML, fmtDate, fmtDateTime, fmtSize, pill, toast, btn, ICON_SM, STATE_BTN, FIELD } from './ui';
 
@@ -185,5 +185,5 @@ export async function initDetail() {
   onChange(render);
   render();
   fillForm();
-  pollPending();
+  subscribe();
 }

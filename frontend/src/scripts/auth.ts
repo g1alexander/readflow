@@ -13,6 +13,12 @@ Amplify.configure({
       loginWith: { email: true },
     },
   },
+  API: {
+    Events: {
+      endpoint: import.meta.env.PUBLIC_EVENTS_ENDPOINT,
+      defaultAuthMode: 'userPool',
+    },
+  },
 });
 useStorage(localStorage.getItem(REMEMBER_KEY) !== '0');
 
@@ -39,6 +45,13 @@ export async function accessToken(): Promise<string> {
   const token = tokens?.accessToken?.toString();
   if (!token) throw new Error('No session');
   return token;
+}
+
+export async function userSub(): Promise<string> {
+  const { tokens } = await fetchAuthSession();
+  const sub = tokens?.accessToken?.payload.sub;
+  if (!sub) throw new Error('No session');
+  return sub;
 }
 
 export async function logout() {

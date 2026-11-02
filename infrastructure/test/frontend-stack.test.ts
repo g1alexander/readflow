@@ -13,6 +13,7 @@ describe('FrontendStack', () => {
       userPoolId: 'us-east-1_TestPool',
       userPoolClientId: 'test-client-id',
       apiUrl: 'https://api.example.com',
+      eventsEndpoint: 'https://events.example.com/event',
     });
     template = Template.fromStack(stack);
   });
@@ -48,6 +49,7 @@ describe('FrontendStack', () => {
     template.hasResourceProperties('AWS::Amplify::App', {
       EnvironmentVariables: Match.arrayWith([
         { Name: 'PUBLIC_API_URL', Value: 'https://api.example.com' },
+        { Name: 'PUBLIC_EVENTS_ENDPOINT', Value: 'https://events.example.com/event' },
       ]),
     });
   });
