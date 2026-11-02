@@ -242,7 +242,7 @@ describe('ServerlessStack', () => {
     });
   });
 
-  it('grants kindle item reads/writes, EPUB reads and SES on the identity only', () => {
+  it('grants kindle item reads/writes, EPUB reads and raw SES sends on the identity only', () => {
     const statements = statementsOf('KindleFunctionServiceRole');
     const actions = statements.flatMap((statement) => statement.Action);
     expect(actions).toEqual(
@@ -252,13 +252,13 @@ describe('ServerlessStack', () => {
         'dynamodb:PutItem',
         'dynamodb:GetRecords',
         's3:GetObject',
-        'ses:SendEmail',
+        'ses:SendRawEmail',
         'sqs:SendMessage',
       ]),
     );
     expect(
       actions.some((action) =>
-        /^(dynamodb:(Query|Scan|Delete|BatchWrite)|s3:(Put|Delete|List)|ses:SendRawEmail)/.test(
+        /^(dynamodb:(Query|Scan|Delete|BatchWrite)|s3:(Put|Delete|List)|ses:SendEmail$)/.test(
           action,
         ),
       ),
@@ -266,7 +266,7 @@ describe('ServerlessStack', () => {
     const resourcesOf = (action: string) =>
       JSON.stringify(statements.filter((statement) => [statement.Action].flat().includes(action)));
     expect(resourcesOf('s3:GetObject')).toContain('/users/*/books/*/book.epub');
-    expect(resourcesOf('ses:SendEmail')).toContain(':identity/');
+    expect(resourcesOf('ses:SendRawEmail')).toContain(':identity/');
   });
 
   it('validates Cognito access tokens with a JWT authorizer', () => {

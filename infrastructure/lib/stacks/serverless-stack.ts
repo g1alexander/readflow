@@ -162,7 +162,7 @@ export class ServerlessStack extends Stack {
         resources: [props.bucket.arnForObjects('users/*/books/*/book.epub')],
       }),
     );
-    props.emailIdentity.grant(kindleFunction, 'ses:SendEmail');
+    props.emailIdentity.grant(kindleFunction, 'ses:SendRawEmail');
     kindleFunction.addEventSource(
       new DynamoEventSource(props.table, {
         startingPosition: StartingPosition.LATEST,
