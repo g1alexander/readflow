@@ -26,6 +26,19 @@ import { btn, PAGE_TITLE, SUBTITLE, FIELD, FIELD_LABEL } from '../scripts/ui';
           <button class={btn('primary')} type="submit" id="settings-save" disabled>Guardar</button>
         </div>
       </form>
+
+      <section class="flex flex-col gap-2 border-t border-line-soft pt-4" aria-labelledby="amazon-steps-title">
+        <h3 class="text-sm font-semibold" id="amazon-steps-title">Configúralo en Amazon</h3>
+        <ol class="flex flex-col gap-2.5 list-decimal pl-5 text-sm leading-relaxed text-muted">
+          <li>
+            Abre <a class="font-semibold text-ink underline" href="https://www.amazon.com/hz/mycd/preferences/myx#/home/settings/payment" target="_blank" rel="noopener noreferrer">Configuración de documentos personales</a> (Cuenta → Contenido y dispositivos → Preferencias).
+          </li>
+          <li>
+            En <strong>Lista de e-mails aprobados para documentos personales</strong> → <strong>Agregar una dirección nueva</strong>: <code class="font-mono text-ink">kindle@chess-mentor.com</code>.
+          </li>
+          <li>En la misma sección copia la dirección <strong>Enviar a Kindle</strong> de tu dispositivo (<code class="font-mono">…@kindle.com</code>) y pégala arriba.</li>
+        </ol>
+      </section>
     </Panel>
   </CenteredPage>
 </Base>
