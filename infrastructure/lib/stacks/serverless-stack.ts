@@ -7,7 +7,7 @@ import type { IUserPoolClient, UserPool } from 'aws-cdk-lib/aws-cognito';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Rule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { ManagedPolicy, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import {
   Architecture,
   Code,
@@ -25,7 +25,7 @@ import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import type { Construct } from 'constructs';
 import { join } from 'node:path';
-import { config } from '../config.js';
+import { resourceName } from '../config.js';
 import { getCorsOrigins } from '../context.js';
 
 export interface ServerlessStackProps extends StackProps {
@@ -55,13 +55,27 @@ export class ServerlessStack extends Stack {
       BUCKET_NAME: props.bucket.bucketName,
     };
 
-    const logGroup = new LogGroup(this, 'ApiFunctionLogs', {
-      retention: RetentionDays.ONE_WEEK,
-      removalPolicy: RemovalPolicy.DESTROY,
-    });
+    const lambdaResources = (service: string, id: string) => {
+      const functionName = resourceName(service);
+      return {
+        functionName,
+        role: new Role(this, `${id}Role`, {
+          roleName: `${functionName}-role`,
+          assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+          managedPolicies: [
+            ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+          ],
+        }),
+        logGroup: new LogGroup(this, `${id}Logs`, {
+          logGroupName: `/aws/lambda/${functionName}`,
+          retention: RetentionDays.ONE_WEEK,
+          removalPolicy: RemovalPolicy.DESTROY,
+        }),
+      };
+    };
 
     const apiFunction = new Function(this, 'ApiFunction', {
-      functionName: `${config.appName}-api`,
+      ...lambdaResources('api', 'ApiFunction'),
       runtime: Runtime.PYTHON_3_13,
       architecture: Architecture.ARM_64,
       code: code('api'),
@@ -69,7 +83,6 @@ export class ServerlessStack extends Stack {
       memorySize: 256,
       timeout: Duration.seconds(10),
       environment,
-      logGroup,
     });
     props.table.grantReadWriteData(apiFunction);
     props.bucket.grantPut(apiFunction);
@@ -94,14 +107,14 @@ export class ServerlessStack extends Stack {
     );
 
     const metadataFailures = new Queue(this, 'MetadataFailures', {
-      queueName: `${config.appName}-metadata-failures`,
+      queueName: resourceName('metadata-failures'),
       retentionPeriod: Duration.days(14),
       enforceSSL: true,
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
     const metadataFunction = new Function(this, 'MetadataFunction', {
-      functionName: `${config.appName}-metadata`,
+      ...lambdaResources('metadata', 'MetadataFunction'),
       runtime: Runtime.PYTHON_3_13,
       architecture: Architecture.ARM_64,
       code: code('metadata'),
@@ -109,10 +122,6 @@ export class ServerlessStack extends Stack {
       memorySize: 512,
       timeout: Duration.seconds(60),
       environment,
-      logGroup: new LogGroup(this, 'MetadataFunctionLogs', {
-        retention: RetentionDays.ONE_WEEK,
-        removalPolicy: RemovalPolicy.DESTROY,
-      }),
       retryAttempts: 2,
       onFailure: new SqsDestination(metadataFailures),
     });
@@ -121,6 +130,7 @@ export class ServerlessStack extends Stack {
     props.bucket.grantPut(metadataFunction, 'users/*/cover.*');
 
     new Rule(this, 'EpubUploaded', {
+      ruleName: resourceName('epub-uploaded'),
       eventPattern: {
         source: ['aws.s3'],
         detailType: ['Object Created'],
@@ -133,14 +143,14 @@ export class ServerlessStack extends Stack {
     });
 
     const kindleFailures = new Queue(this, 'KindleFailures', {
-      queueName: `${config.appName}-kindle-failures`,
+      queueName: resourceName('kindle-failures'),
       retentionPeriod: Duration.days(14),
       enforceSSL: true,
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
     const kindleFunction = new Function(this, 'KindleFunction', {
-      functionName: `${config.appName}-kindle`,
+      ...lambdaResources('kindle', 'KindleFunction'),
       runtime: Runtime.PYTHON_3_13,
       architecture: Architecture.ARM_64,
       code: code('kindle'),
@@ -148,10 +158,6 @@ export class ServerlessStack extends Stack {
       memorySize: 512,
       timeout: Duration.seconds(60),
       environment: { ...environment, SENDER_ADDRESS: props.senderAddress },
-      logGroup: new LogGroup(this, 'KindleFunctionLogs', {
-        retention: RetentionDays.ONE_WEEK,
-        removalPolicy: RemovalPolicy.DESTROY,
-      }),
     });
     props.table.grant(
       kindleFunction,
@@ -189,7 +195,7 @@ export class ServerlessStack extends Stack {
     );
 
     const notifyFunction = new Function(this, 'NotifyFunction', {
-      functionName: `${config.appName}-notify`,
+      ...lambdaResources('notify', 'NotifyFunction'),
       runtime: Runtime.PYTHON_3_13,
       architecture: Architecture.ARM_64,
       code: code('notify'),
@@ -197,10 +203,6 @@ export class ServerlessStack extends Stack {
       memorySize: 256,
       timeout: Duration.seconds(30),
       environment: { EVENTS_ENDPOINT: props.eventsEndpoint },
-      logGroup: new LogGroup(this, 'NotifyFunctionLogs', {
-        retention: RetentionDays.ONE_WEEK,
-        removalPolicy: RemovalPolicy.DESTROY,
-      }),
     });
     props.eventApi.grantPublish(notifyFunction);
     notifyFunction.addEventSource(
@@ -219,6 +221,7 @@ export class ServerlessStack extends Stack {
     );
 
     const api = new HttpApi(this, 'HttpApi', {
+      apiName: resourceName('api'),
       createDefaultStage: false,
       corsPreflight: {
         allowOrigins: getCorsOrigins(this),

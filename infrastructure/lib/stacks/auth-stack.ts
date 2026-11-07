@@ -6,7 +6,7 @@ import {
   type UserPoolClient,
 } from 'aws-cdk-lib/aws-cognito';
 import type { Construct } from 'constructs';
-import { config } from '../config.js';
+import { resourceName } from '../config.js';
 
 export class AuthStack extends Stack {
   readonly userPool: UserPool;
@@ -16,7 +16,7 @@ export class AuthStack extends Stack {
     super(scope, id, props);
 
     this.userPool = new UserPool(this, 'UserPool', {
-      userPoolName: config.appName,
+      userPoolName: resourceName('userpool'),
       featurePlan: FeaturePlan.LITE,
       selfSignUpEnabled: false,
       signInAliases: { email: true },
@@ -27,6 +27,7 @@ export class AuthStack extends Stack {
     });
 
     this.userPoolClient = this.userPool.addClient('WebClient', {
+      userPoolClientName: resourceName('web'),
       authFlows: { userSrp: true },
       generateSecret: false,
       preventUserExistenceErrors: true,

@@ -21,7 +21,7 @@ describe('FrontendStack', () => {
   it('connects the repo through the GitHub App access token, not OAuth', () => {
     template.hasResourceProperties('AWS::Amplify::App', {
       Repository: 'https://github.com/g1alexander/readflow',
-      AccessToken: '{{resolve:ssm:/readflow/github-token}}',
+      AccessToken: '{{resolve:ssm:/g1-readflow/github-token}}',
       OauthToken: Match.absent(),
       Platform: 'WEB',
     });

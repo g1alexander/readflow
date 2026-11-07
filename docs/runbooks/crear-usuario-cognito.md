@@ -7,7 +7,7 @@ El frontend no maneja `NEW_PASSWORD_REQUIRED`, así que el usuario tiene que que
 ## 1. Obtener el User Pool
 
 ```sh
-POOL_ID=$(aws cloudformation describe-stacks --stack-name ReadflowAuth --region us-east-1 \
+POOL_ID=$(aws cloudformation describe-stacks --stack-name g1-readflow-auth --region us-east-1 --profile alex \
   --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" --output text)
 ```
 
@@ -15,7 +15,7 @@ POOL_ID=$(aws cloudformation describe-stacks --stack-name ReadflowAuth --region 
 
 ```sh
 EMAIL=<email>
-aws cognito-idp admin-create-user --user-pool-id "$POOL_ID" --region us-east-1 \
+aws cognito-idp admin-create-user --user-pool-id "$POOL_ID" --region us-east-1 --profile alex \
   --username "$EMAIL" \
   --user-attributes Name=email,Value="$EMAIL" Name=email_verified,Value=true \
   --message-action SUPPRESS
@@ -24,13 +24,13 @@ aws cognito-idp admin-create-user --user-pool-id "$POOL_ID" --region us-east-1 \
 ## 3. Fijar la contraseña
 
 ```sh
-aws cognito-idp admin-set-user-password --user-pool-id "$POOL_ID" --region us-east-1 \
+aws cognito-idp admin-set-user-password --user-pool-id "$POOL_ID" --region us-east-1 --profile alex \
   --username "$EMAIL" --password '<password>' --permanent
 ```
 
 Este mismo comando sirve para resetear la contraseña de un usuario existente.
 
-Esperado: `aws cognito-idp admin-get-user --user-pool-id "$POOL_ID" --region us-east-1 --username "$EMAIL" --query UserStatus` devuelve `"CONFIRMED"`.
+Esperado: `aws cognito-idp admin-get-user --user-pool-id "$POOL_ID" --region us-east-1 --profile alex --username "$EMAIL" --query UserStatus` devuelve `"CONFIRMED"`.
 
 No hace falta crear nada en DynamoDB. Los ajustes del usuario se guardan con el primer `PUT /settings`. Hasta que configure el email de Kindle, los envíos devuelven `409 kindle_email_missing`.
 

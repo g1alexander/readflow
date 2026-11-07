@@ -17,7 +17,7 @@ describe('StorageStack', () => {
 
   it('creates the single table from the data model spec', () => {
     template.hasResourceProperties('AWS::DynamoDB::Table', {
-      TableName: 'readflow',
+      TableName: 'g1-readflow-table',
       KeySchema: [
         { AttributeName: 'PK', KeyType: 'HASH' },
         { AttributeName: 'SK', KeyType: 'RANGE' },
@@ -44,7 +44,7 @@ describe('StorageStack', () => {
 
   it('creates a private, SSE-S3 bucket without versioning or lifecycle', () => {
     template.hasResourceProperties('AWS::S3::Bucket', {
-      BucketName: 'g1-readflowstorage-epub',
+      BucketName: 'g1-readflow-bucket',
       PublicAccessBlockConfiguration: {
         BlockPublicAcls: true,
         BlockPublicPolicy: true,

@@ -41,10 +41,10 @@ describe('ServerlessStack', () => {
   });
 
   it.each([
-    ['readflow-api', 'api'],
-    ['readflow-metadata', 'metadata'],
-    ['readflow-kindle', 'kindle'],
-    ['readflow-notify', 'notify'],
+    ['g1-readflow-api', 'api'],
+    ['g1-readflow-metadata', 'metadata'],
+    ['g1-readflow-kindle', 'kindle'],
+    ['g1-readflow-notify', 'notify'],
   ])('names %s and packages only its own code plus common', (name, own) => {
     const [fn] = Object.values(
       template.findResources('AWS::Lambda::Function', { Properties: { FunctionName: name } }),
@@ -55,6 +55,21 @@ describe('ServerlessStack', () => {
     for (const other of ['api', 'metadata', 'kindle', 'notify'].filter((dir) => dir !== own)) {
       expect(existsSync(join(assetDir, other))).toBe(false);
     }
+  });
+
+  it.each(['api', 'metadata', 'kindle', 'notify'])(
+    'names the %s Lambda role and log group with the g1-readflow prefix',
+    (service) => {
+      template.hasResourceProperties('AWS::IAM::Role', { RoleName: `g1-readflow-${service}-role` });
+      template.hasResourceProperties('AWS::Logs::LogGroup', {
+        LogGroupName: `/aws/lambda/g1-readflow-${service}`,
+      });
+    },
+  );
+
+  it('names the HTTP API and the EventBridge rule with the g1-readflow prefix', () => {
+    template.hasResourceProperties('AWS::ApiGatewayV2::Api', { Name: 'g1-readflow-api' });
+    template.hasResourceProperties('AWS::Events::Rule', { Name: 'g1-readflow-epub-uploaded' });
   });
 
   it('runs the api Lambda on Python 3.13 arm64 with the table and bucket names', () => {
@@ -115,7 +130,7 @@ describe('ServerlessStack', () => {
   }
 
   it('grants the api table read/write and S3 only on the paths it uses', () => {
-    const statements = statementsOf('ApiFunctionServiceRole');
+    const statements = statementsOf('ApiFunctionRole');
     const actions = statements.flatMap((statement) => statement.Action);
     expect(actions).toEqual(
       expect.arrayContaining(['dynamodb:Query', 'dynamodb:PutItem', 's3:PutObject']),
@@ -136,7 +151,7 @@ describe('ServerlessStack', () => {
   });
 
   it('grants metadata table writes, EPUB reads and cover puts only', () => {
-    const actions = actionsOf('MetadataFunctionServiceRole');
+    const actions = actionsOf('MetadataFunctionRole');
     expect(actions).toEqual(
       expect.arrayContaining([
         'dynamodb:PutItem',
@@ -150,7 +165,7 @@ describe('ServerlessStack', () => {
       false,
     );
     const s3Resources = JSON.stringify(
-      statementsOf('MetadataFunctionServiceRole').filter((statement) =>
+      statementsOf('MetadataFunctionRole').filter((statement) =>
         [statement.Action].flat().some((action) => action.startsWith('s3:')),
       ),
     );
@@ -160,7 +175,7 @@ describe('ServerlessStack', () => {
 
   it('sends failed metadata events to SQS after 2 retries', () => {
     template.hasResourceProperties('AWS::SQS::Queue', {
-      QueueName: 'readflow-metadata-failures',
+      QueueName: 'g1-readflow-metadata-failures',
       MessageRetentionPeriod: 1209600,
     });
     template.hasResource('AWS::SQS::Queue', { DeletionPolicy: 'Delete' });
@@ -193,7 +208,7 @@ describe('ServerlessStack', () => {
 
   it('runs the kindle Lambda with 512 MB, 60 s and the sender address', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'readflow-kindle',
+      FunctionName: 'g1-readflow-kindle',
       Runtime: 'python3.13',
       Architectures: ['arm64'],
       Handler: 'kindle.handler.handler',
@@ -213,7 +228,7 @@ describe('ServerlessStack', () => {
   it('consumes the table stream with the spec filter and a failure queue', () => {
     template.resourceCountIs('AWS::SQS::Queue', 2);
     template.hasResourceProperties('AWS::SQS::Queue', {
-      QueueName: 'readflow-kindle-failures',
+      QueueName: 'g1-readflow-kindle-failures',
       MessageRetentionPeriod: 1209600,
     });
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
@@ -249,7 +264,7 @@ describe('ServerlessStack', () => {
 
   it('feeds notify from the stream with BOOK modifications and lets it publish events', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'readflow-notify',
+      FunctionName: 'g1-readflow-notify',
       Handler: 'notify.handler.handler',
       Environment: { Variables: { EVENTS_ENDPOINT: Match.anyValue() } },
     });
@@ -271,7 +286,7 @@ describe('ServerlessStack', () => {
       },
     });
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: [{ Ref: Match.stringLikeRegexp('NotifyFunctionServiceRole') }],
+      Roles: [{ Ref: Match.stringLikeRegexp('NotifyFunctionRole') }],
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({ Action: 'appsync:EventPublish' }),
@@ -281,7 +296,7 @@ describe('ServerlessStack', () => {
   });
 
   it('grants kindle item reads/writes, EPUB reads and raw SES sends on the identity only', () => {
-    const statements = statementsOf('KindleFunctionServiceRole');
+    const statements = statementsOf('KindleFunctionRole');
     const actions = statements.flatMap((statement) => statement.Action);
     expect(actions).toEqual(
       expect.arrayContaining([

@@ -1,13 +1,10 @@
 export const config = {
   region: 'us-east-1',
-  appName: 'readflow',
+  prefix: 'g1-readflow',
   github: {
     owner: 'g1alexander',
     repository: 'readflow',
-    tokenParameterName: '/readflow/github-token',
-  },
-  storage: {
-    bucketName: 'g1-readflowstorage-epub',
+    tokenParameterName: '/g1-readflow/github-token',
   },
   frontend: {
     appRoot: 'frontend',
@@ -16,3 +13,5 @@ export const config = {
     pnpmVersion: '11.22.0',
   },
 } as const;
+
+export const resourceName = (service: string) => `${config.prefix}-${service}`;

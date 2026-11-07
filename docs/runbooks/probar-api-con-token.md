@@ -1,11 +1,11 @@
 # Probar la API con un access token
 
-Valida la cadena token → authorizer → Lambda → DynamoDB (ALE-14) y la subida del EPUB a S3 (ALE-15). Requiere `ReadflowStorage` y `ReadflowServerless` desplegados y un usuario en el User Pool.
+Valida la cadena token → authorizer → Lambda → DynamoDB (ALE-14) y la subida del EPUB a S3 (ALE-15). Requiere `g1-readflow-storage` y `g1-readflow-serverless` desplegados y un usuario en el User Pool.
 
 ## 1. URL de la API
 
 ```sh
-API_URL=$(aws cloudformation describe-stacks --stack-name ReadflowServerless --region us-east-1 \
+API_URL=$(aws cloudformation describe-stacks --stack-name g1-readflow-serverless --region us-east-1 --profile alex \
   --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
 ```
 
@@ -54,7 +54,7 @@ curl -i -X PUT -H 'content-type: application/epub+zip' --data-binary @"$EPUB" \
 Esperado: `200`. Comprobar el objeto:
 
 ```sh
-aws s3 ls "s3://g1-readflowstorage-epub/$(jq -r .book.epubKey /tmp/upload.json)"
+aws s3 ls "s3://g1-readflow-bucket/$(jq -r .book.epubKey /tmp/upload.json)" --profile alex
 ```
 
 `GET /books` ya devuelve el libro con `ingest=pending`; pasa a `ready` (o `failed`) cuando la Lambda de metadata procesa el EPUB.
@@ -64,9 +64,9 @@ aws s3 ls "s3://g1-readflowstorage-epub/$(jq -r .book.epubKey /tmp/upload.json)"
 | Síntoma | Causa probable |
 | --- | --- |
 | `401` con token | Se usó el ID token, o expiró |
-| `500 {"error":{"code":"internal",...}}` | Ver logs: CloudWatch → log group de la Lambda `readflow-api` |
+| `500 {"error":{"code":"internal",...}}` | Ver logs: CloudWatch → log group de la Lambda `g1-readflow-api` |
 | `400 invalid_request` en `/uploads` | `fileName` sin `.epub`, `size` no entero o mayor a 100 MB |
 | `403 SignatureDoesNotMatch` en el PUT | Falta `content-type: application/epub+zip` o es otro |
 | `403 AccessDenied` / `Request has expired` en el PUT | La URL venció (15 min); pedir otra con `POST /uploads` |
 | `429` | Throttling del stage (10 rps / burst 20) |
-| CORS en el navegador | El origen no está en el context `corsOrigins`; actualizar `cdk.json` y desplegar `ReadflowServerless` (API) y `ReadflowStorage` (PUT del EPUB a S3) |
+| CORS en el navegador | El origen no está en el context `corsOrigins`; actualizar `cdk.json` y desplegar `g1-readflow-serverless` (API) y `g1-readflow-storage` (PUT del EPUB a S3) |

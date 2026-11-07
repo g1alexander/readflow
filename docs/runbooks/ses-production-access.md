@@ -1,6 +1,6 @@
 # SES: production access y remitente aprobado en Kindle
 
-Pasos manuales para que readflow pueda enviar EPUB a una dirección `@kindle.com` (ALE-11). Requiere `ReadflowMail` desplegado y la hosted zone delegada ([runbook](route53-hosted-zone-dominio-externo.md)).
+Pasos manuales para que readflow pueda enviar EPUB a una dirección `@kindle.com` (ALE-11). Requiere `g1-readflow-mail` desplegado y la hosted zone delegada ([runbook](route53-hosted-zone-dominio-externo.md)).
 
 ## 1. Verificar la identidad
 
@@ -8,7 +8,7 @@ Pasos manuales para que readflow pueda enviar EPUB a una dirección `@kindle.com
 2. **Identity status** = _Verified_ y **DKIM** = _Successful_. Suele tardar minutos tras el deploy; hasta 72 h.
 
 ```sh
-aws sesv2 get-email-identity --email-identity chess-mentor.com --region us-east-1 \
+aws sesv2 get-email-identity --email-identity chess-mentor.com --region us-east-1 --profile alex \
   --query '{verified: VerifiedForSendingStatus, dkim: DkimAttributes.Status}'
 ```
 
@@ -25,7 +25,7 @@ En sandbox solo se envía a destinatarios verificados.
 Consola → **SES → Account dashboard → Request production access**, o:
 
 ```sh
-aws sesv2 put-account-details --region us-east-1 \
+aws sesv2 put-account-details --region us-east-1 --profile alex \
   --production-access-enabled \
   --mail-type TRANSACTIONAL \
   --website-url https://readflow.chess-mentor.com \
@@ -40,7 +40,7 @@ Texto de caso de uso:
 AWS responde por correo, normalmente en 24 h. Si piden más detalle, responder en el mismo caso de soporte.
 
 ```sh
-aws sesv2 get-account --region us-east-1 --query ProductionAccessEnabled
+aws sesv2 get-account --region us-east-1 --profile alex --query ProductionAccessEnabled
 ```
 
 ## 4. Aprobar el remitente en Amazon

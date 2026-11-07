@@ -2,7 +2,7 @@ import { CfnOutput, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
 import { AppSyncAuthorizationType, Code, EventApi, type IEventApi } from 'aws-cdk-lib/aws-appsync';
 import type { IUserPool } from 'aws-cdk-lib/aws-cognito';
 import type { Construct } from 'constructs';
-import { config } from '../config.js';
+import { resourceName } from '../config.js';
 
 export interface RealtimeStackProps extends StackProps {
   userPool: IUserPool;
@@ -26,7 +26,7 @@ export class RealtimeStack extends Stack {
     super(scope, id, props);
 
     const api = new EventApi(this, 'EventApi', {
-      apiName: config.appName,
+      apiName: resourceName('events'),
       authorizationConfig: {
         authProviders: [
           {

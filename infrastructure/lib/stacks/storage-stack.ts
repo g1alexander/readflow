@@ -15,7 +15,7 @@ import {
   type IBucket,
 } from 'aws-cdk-lib/aws-s3';
 import type { Construct } from 'constructs';
-import { config } from '../config.js';
+import { resourceName } from '../config.js';
 import { getCorsOrigins } from '../context.js';
 
 export class StorageStack extends Stack {
@@ -28,7 +28,7 @@ export class StorageStack extends Stack {
     const corsOrigins = getCorsOrigins(this);
 
     this.table = new Table(this, 'Table', {
-      tableName: config.appName,
+      tableName: resourceName('table'),
       partitionKey: { name: 'PK', type: AttributeType.STRING },
       sortKey: { name: 'SK', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
@@ -38,7 +38,7 @@ export class StorageStack extends Stack {
     });
 
     this.bucket = new Bucket(this, 'EpubBucket', {
-      bucketName: config.storage.bucketName,
+      bucketName: resourceName('bucket'),
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
       objectOwnership: ObjectOwnership.BUCKET_OWNER_ENFORCED,

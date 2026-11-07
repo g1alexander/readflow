@@ -2,7 +2,7 @@
 
 Contrato de datos que comparten la API de libros, la Lambda de metadata y la Lambda de envío a Kindle. Decisiones y porqués: [ALE-9](https://linear.app/g1alexander/issue/ALE-9) y [ADR 0005](../adr/0005-dynamodb-single-table.md).
 
-## Tabla `readflow`
+## Tabla `g1-readflow-table`
 
 | Propiedad | Valor |
 | --- | --- |
@@ -132,7 +132,7 @@ POST /uploads ──► pending ──(metadata OK)──► ready
 - El item existe desde que se pide la presigned URL: si el evento S3 se pierde, el libro queda visible como `pending` y no desaparece en silencio.
 - La condición `ingest = pending` en #5 evita que un reintento de la Lambda pise ediciones posteriores del usuario.
 - Un libro `pending` cuyo EPUB nunca llegó a S3 se queda así; limpiarlo queda fuera de esta spec.
-- `failed` es solo para EPUBs inválidos. Los errores de infraestructura o de código no marcan el libro: se reintentan y terminan en la cola `readflow-metadata-failures` ([ADR 0009](../adr/0009-lambda-metadata-eventbridge-parser-stdlib.md)).
+- `failed` es solo para EPUBs inválidos. Los errores de infraestructura o de código no marcan el libro: se reintentan y terminan en la cola `g1-readflow-metadata-failures` ([ADR 0009](../adr/0009-lambda-metadata-eventbridge-parser-stdlib.md)).
 
 ### Metadata extraída
 
@@ -174,7 +174,7 @@ Sin `INSERT`: un Book nace siempre con `ingest=pending`, así que el primer env�
 
 **Envío:** lee `kindleEmail` de Settings y el EPUB de S3 al procesar. Si el objeto pesa más de 28 MB (SES acepta 40 MB por mensaje y el adjunto crece ~33 % en base64) → `failed` con `too_large`, sin llamar a SES. Email: SES v2 `SendEmail` con contenido Raw; From = remitente del `MailStack`, To = `kindleEmail`, asunto = `name`, adjunto `<slug del name>.epub` (`application/epub+zip`).
 
-**Fallos:** los errores de envío (`too_large`, `kindle_email_missing`, `ses_error`) se escriben como `failed` según #9 y la Lambda termina OK; no hay reintento automático, el usuario reenvía (#7). Solo una caída de la Lambda (código o infraestructura) reintenta: event source mapping con `batchSize 1`, 2 reintentos, `bisectBatchOnError` y destino on-failure `readflow-kindle-failures` (SQS, 14 días).
+**Fallos:** los errores de envío (`too_large`, `kindle_email_missing`, `ses_error`) se escriben como `failed` según #9 y la Lambda termina OK; no hay reintento automático, el usuario reenvía (#7). Solo una caída de la Lambda (código o infraestructura) reintenta: event source mapping con `batchSize 1`, 2 reintentos, `bisectBatchOnError` y destino on-failure `g1-readflow-kindle-failures` (SQS, 14 días).
 
 ## Contrato del Stream (Lambda de avisos)
 
@@ -186,7 +186,7 @@ Bucket privado (Block Public Access completo). El navegador sube y descarga solo
 
 | Propiedad | Valor |
 | --- | --- |
-| Nombre | `g1-readflowstorage-epub` (fijo, `lib/config.ts`); output `BucketName` del stack `ReadflowStorage` |
+| Nombre | `g1-readflow-bucket` (fijo, `lib/config.ts`); output `BucketName` del stack `g1-readflow-storage` |
 | Cifrado | SSE-S3 |
 | Ownership | `BucketOwnerEnforced` (sin ACLs) |
 | TLS | Obligatorio (`enforceSSL`) |

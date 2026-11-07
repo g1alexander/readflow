@@ -4,14 +4,14 @@
 
 ## Antes de empezar
 
-- La cuenta tiene que estar bootstrapeada con `pnpm exec cdk bootstrap` (ver `infrastructure/README.md`).
+- La cuenta tiene que estar bootstrapeada con `pnpm exec cdk bootstrap --profile alex` (ver `infrastructure/README.md`).
 
 ## 1. Identity provider
 
 En IAM → Identity providers crear el provider `token.actions.githubusercontent.com`, con audiencia `sts.amazonaws.com`.
 
 ```sh
-aws iam get-open-id-connect-provider --profile <PROFILE> \
+aws iam get-open-id-connect-provider --profile alex \
   --open-id-connect-provider-arn arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com \
   --query ClientIDList
 ```
@@ -42,7 +42,7 @@ GitHub manda el `sub` con los IDs inmutables del owner y del repo (`owner@id/rep
 Permisos del rol:
 
 - `sts:AssumeRole` sobre los roles de bootstrap `arn:aws:iam::<ACCOUNT_ID>:role/cdk-hnb659fds-*`.
-- `ssm:GetParameter` sobre el parámetro `/readflow/github-token`, que `ReadflowFrontend` lee durante el deploy.
+- `ssm:GetParameter` sobre el parámetro `/g1-readflow/github-token`, que `g1-readflow-frontend` lee durante el deploy.
 
 ## 3. Secret en GitHub
 

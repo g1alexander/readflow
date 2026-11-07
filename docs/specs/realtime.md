@@ -6,7 +6,7 @@ Contrato entre la Lambda `notify` y el front para avisar cambios de un libro. De
 
 | Propiedad | Valor |
 | --- | --- |
-| Servicio | AppSync Events (`ReadflowRealtime`) |
+| Servicio | AppSync Events (`g1-readflow-realtime`) |
 | Endpoint HTTP | `https://<httpDns>/event`. Output `EventsEndpoint`; en el front, `PUBLIC_EVENTS_ENDPOINT` |
 | Namespace | `readflow` |
 | Canal | `/readflow/users/<sub>` (un canal por usuario) |
@@ -22,7 +22,7 @@ El front nunca publica.
 
 ## Cuándo se publica
 
-La Lambda `notify` consume el Stream de `ReadflowStorage` (filtro: `MODIFY` y `NewImage.entity = BOOK`). Publica un aviso cuando cambia alguno de estos campos entre `OldImage` y `NewImage`:
+La Lambda `notify` consume el Stream de `g1-readflow-storage` (filtro: `MODIFY` y `NewImage.entity = BOOK`). Publica un aviso cuando cambia alguno de estos campos entre `OldImage` y `NewImage`:
 
 - `ingest`
 - `kindle.status`

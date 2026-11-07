@@ -9,7 +9,7 @@ import {
 } from 'aws-cdk-lib';
 import { BuildSpec } from 'aws-cdk-lib/aws-codebuild';
 import type { Construct } from 'constructs';
-import { config } from '../config.js';
+import { config, resourceName } from '../config.js';
 import { GitHubAppSourceCodeProvider } from '../constructs/github-app-source-code-provider.js';
 
 export interface FrontendStackProps extends StackProps {
@@ -28,7 +28,7 @@ export class FrontendStack extends Stack {
     const appSubdomain = this.contextString('appSubdomain');
 
     const app = new amplify.App(this, 'FrontendApp', {
-      appName: config.appName,
+      appName: resourceName('frontend'),
       platform: amplify.Platform.WEB,
       sourceCodeProvider: new GitHubAppSourceCodeProvider({
         owner: config.github.owner,
