@@ -12,7 +12,7 @@ export const config = {
   frontend: {
     appRoot: 'frontend',
     branch: 'main',
-    nodeVersion: '22',
+    nodeVersion: '24',
     pnpmVersion: '11.22.0',
   },
 } as const;
