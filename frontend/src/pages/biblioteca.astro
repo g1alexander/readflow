@@ -3,9 +3,7 @@ import Base from '../layouts/Base.astro';
 import AppShell from '../components/AppShell.astro';
 import SearchInput from '../components/SearchInput.astro';
 import Icon from '../components/Icon.astro';
-import { btn, PAGE_TITLE, SUBTITLE, SECTION_TITLE, ICON_SM } from '../scripts/ui';
-import '../styles/library-variants.css';
-const chipsRow = 'flex gap-2 overflow-x-auto -mx-5 px-5 pb-0.5 [scrollbar-width:none] md:mx-0 md:px-0 md:flex-wrap';
+import { btn, PAGE_TITLE, SUBTITLE, SECTION_TITLE, ICON_SM } from '../scripts/ui';const chipsRow = 'flex gap-2 overflow-x-auto -mx-5 px-5 pb-0.5 [scrollbar-width:none] md:mx-0 md:px-0 md:flex-wrap';
 ---
 <Base title="Biblioteca — Readflow" auth="private">
   <AppShell current="/biblioteca">
@@ -28,32 +26,12 @@ const chipsRow = 'flex gap-2 overflow-x-auto -mx-5 px-5 pb-0.5 [scrollbar-width:
     </section>
 
     <section class="flex flex-col gap-6" aria-label="Libros">
-      <div class="library-grid grid grid-cols-2 gap-4 items-start overflow-y-clip md:grid-cols-3 md:gap-6" id="grid"></div>
+      <div class="library-grid grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4 items-start md:gap-6" id="grid"></div>
       <p class="text-muted text-sm text-center py-6" id="grid-status" aria-live="polite"></p>
       <div id="sentinel" aria-hidden="true"></div>
     </section>
   </AppShell>
 </Base>
-
-<nav id="variant-bar" aria-label="Variantes"></nav>
-
-<script>
-  const VARIANTS = { '': 'Actual', a: 'A · Reverse', b: 'B · Parallax', c: 'C · Reveal', d: 'D · Plana' };
-  const v = new URLSearchParams(location.search).get('v') ?? '';
-  const gridEl = document.getElementById('grid')!;
-  if (v in VARIANTS && v) { gridEl.classList.remove('library-grid'); gridEl.dataset.v = v; }
-  const bar = document.getElementById('variant-bar')!;
-  bar.innerHTML = Object.entries(VARIANTS).map(([k, label]) => {
-    const u = new URL(location.href);
-    if (k) u.searchParams.set('v', k); else u.searchParams.delete('v');
-    return `<a href="${u.pathname}${u.search}" aria-current="${k === v}">${label}</a>`;
-  }).join('');
-  const warn = [
-    !CSS.supports('animation-timeline: scroll()') && 'sin soporte animation-timeline',
-    matchMedia('(prefers-reduced-motion: reduce)').matches && 'reducir movimiento activo',
-  ].filter(Boolean).join(' · ');
-  if (warn) bar.insertAdjacentHTML('beforeend', `<span data-warn>⚠ ${warn}</span>`);
-</script>
 
 <script>
   import { initLibrary } from '../scripts/library';
