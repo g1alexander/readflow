@@ -21,9 +21,10 @@ CDK crea la app de Amplify (`@aws-cdk/aws-amplify-alpha`) conectada a GitHub y l
 
 - Toda la configuración del frontend es reproducible con `cdk deploy`.
 - El construct de Amplify es alpha: su API puede cambiar entre versiones.
-- CDK necesita un token de GitHub (en Secrets Manager) para conectar el repo.
+- CDK necesita un token de GitHub (en SSM Parameter Store) para conectar el repo.
 
 ## Notas
 
 - 2026-10-06 (ALE-7): la conexión usa la GitHub App de Amplify mediante `AccessToken`, no `OauthToken`, que es el flujo legacy de webhook + deploy key. `GitHubSourceCodeProvider` del alpha solo emite `oauthToken`, así que existe un provider propio: `infrastructure/lib/constructs/github-app-source-code-provider.ts`. El secreto `readflow/github-token` guarda un PAT classic con scope `admin:repo_hook`, que solo se usa al crear o actualizar la app.
 - 2026-10-21 (ALE-13): las primeras variables inyectadas son `PUBLIC_COGNITO_USER_POOL_ID` y `PUBLIC_COGNITO_USER_POOL_CLIENT_ID`, que llegan por props desde `ReadflowAuth` ([ADR 0006](0006-login-email-password-srp-sin-hosted-ui.md)). Las variables se leen en el build: cambiarlas exige un build nuevo.
+- 2026-11-07: el PAT pasa de Secrets Manager a un parámetro SSM `String` `/readflow/github-token`, leído con `{{resolve:ssm:...}}`. Ahorra el coste del secreto. `SecureString` no sirve: `AWS::Amplify::App` `AccessToken` no admite `ssm-secure`. El valor queda sin cifrar y visible para quien tenga `ssm:GetParameter` en la cuenta; se acepta porque ese acceso ya implica control de la cuenta.

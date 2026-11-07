@@ -42,7 +42,7 @@ GitHub manda el `sub` con los IDs inmutables del owner y del repo (`owner@id/rep
 Permisos del rol:
 
 - `sts:AssumeRole` sobre los roles de bootstrap `arn:aws:iam::<ACCOUNT_ID>:role/cdk-hnb659fds-*`.
-- Leer el secreto `readflow/github-token`, que `ReadflowFrontend` lee durante el deploy.
+- `ssm:GetParameter` sobre el parámetro `/readflow/github-token`, que `ReadflowFrontend` lee durante el deploy.
 
 ## 3. Secret en GitHub
 

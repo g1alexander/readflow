@@ -36,7 +36,7 @@
 | EventBridge | Lleva el `Object Created` del bucket a la Lambda de metadata |
 | SQS | Colas de fallos de las Lambdas de metadata y Kindle |
 | AppSync Events | Avisos push al navegador cuando cambia la ingesta o el envío al Kindle |
-| Secrets Manager | Token de GitHub con el que Amplify lee el repo |
+| SSM Parameter Store | Token de GitHub con el que Amplify lee el repo |
 | SES | Envío del email con el EPUB adjunto al Kindle |
 | CloudWatch | Logs y métricas |
 

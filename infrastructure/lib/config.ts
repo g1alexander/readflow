@@ -4,7 +4,7 @@ export const config = {
   github: {
     owner: 'g1alexander',
     repository: 'readflow',
-    tokenSecretName: 'readflow/github-token',
+    tokenParameterName: '/readflow/github-token',
   },
   storage: {
     bucketName: 'g1-readflowstorage-epub',

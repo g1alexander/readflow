@@ -21,7 +21,7 @@ pnpm diff
 ## Setup inicial
 
 1. Instalar la Amplify GitHub App en el repo.
-2. PAT classic (`admin:repo_hook`) en Secrets Manager como `readflow/github-token`.
+2. PAT classic (`admin:repo_hook`) en SSM Parameter Store como `String` `/readflow/github-token` (`aws ssm put-parameter --name /readflow/github-token --type String --value <PAT> --profile alex`).
 3. `pnpm exec cdk bootstrap` y `pnpm run deploy --all`.
 4. Deploy continuo: push a `main` que toque `serverless/**`, `infrastructure/**` o `.github/workflows/**` → GitHub Actions corre lint, tests y `cdk deploy --all` con OIDC ([runbook](../docs/runbooks/github-actions-oidc.md)).
 

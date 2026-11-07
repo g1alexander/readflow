@@ -1,5 +1,12 @@
 import * as amplify from '@aws-cdk/aws-amplify-alpha';
-import { CfnOutput, SecretValue, Stack, type StackProps } from 'aws-cdk-lib';
+import {
+  CfnDynamicReference,
+  CfnDynamicReferenceService,
+  CfnOutput,
+  SecretValue,
+  Stack,
+  type StackProps,
+} from 'aws-cdk-lib';
 import { BuildSpec } from 'aws-cdk-lib/aws-codebuild';
 import type { Construct } from 'constructs';
 import { config } from '../config.js';
@@ -26,7 +33,9 @@ export class FrontendStack extends Stack {
       sourceCodeProvider: new GitHubAppSourceCodeProvider({
         owner: config.github.owner,
         repository: config.github.repository,
-        accessToken: SecretValue.secretsManager(config.github.tokenSecretName),
+        accessToken: SecretValue.cfnDynamicReference(
+          new CfnDynamicReference(CfnDynamicReferenceService.SSM, config.github.tokenParameterName),
+        ),
       }),
       environmentVariables: {
         AMPLIFY_MONOREPO_APP_ROOT: appRoot,
