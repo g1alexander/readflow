@@ -23,7 +23,7 @@ export class StorageStack extends Stack {
   readonly bucket: IBucket;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
-    super(scope, id, props);
+    super(scope, id, { ...props, terminationProtection: true });
 
     const corsOrigins = getCorsOrigins(this);
 
@@ -34,7 +34,7 @@ export class StorageStack extends Stack {
       billingMode: BillingMode.PAY_PER_REQUEST,
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
       stream: StreamViewType.NEW_AND_OLD_IMAGES,
-      removalPolicy: RemovalPolicy.DESTROY,
+      removalPolicy: RemovalPolicy.RETAIN,
     });
 
     this.bucket = new Bucket(this, 'EpubBucket', {
@@ -50,8 +50,7 @@ export class StorageStack extends Stack {
           allowedHeaders: ['content-type'],
         },
       ],
-      removalPolicy: RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      removalPolicy: RemovalPolicy.RETAIN,
       eventBridgeEnabled: true,
     });
 

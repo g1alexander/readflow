@@ -1,14 +1,15 @@
 import { App } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
-import { beforeAll, describe, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
 
 describe('AuthStack', () => {
   let template: Template;
+  let stack: AuthStack;
 
   beforeAll(() => {
     const app = new App();
-    const stack = new AuthStack(app, 'TestAuth', {
+    stack = new AuthStack(app, 'TestAuth', {
       env: { account: '123456789012', region: 'us-east-1' },
     });
     template = Template.fromStack(stack);
@@ -23,10 +24,14 @@ describe('AuthStack', () => {
     });
   });
 
-  it('deletes the pool when the stack is destroyed', () => {
+  it('enables termination protection', () => {
+    expect(stack.terminationProtection).toBe(true);
+  });
+
+  it('retains the pool when the stack is destroyed', () => {
     template.hasResource('AWS::Cognito::UserPool', {
-      DeletionPolicy: 'Delete',
-      UpdateReplacePolicy: 'Delete',
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
     });
   });
 

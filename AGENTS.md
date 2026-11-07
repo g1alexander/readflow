@@ -33,7 +33,7 @@ Webapp serverless personal de biblioteca y lectura (EPUB → Kindle). Monorepo: 
 - Contratos (API, eventos, modelo de datos) → `docs/specs/`. No inferirlos del código.
 - READMEs cortos: qué es, comandos, setup. El detalle va a ADRs/specs.
 - Solo `AGENTS.md`; no crear `CLAUDE.md`.
-- Ningún stack con terminationProtection; todos los recursos con `RemovalPolicy.DESTROY`, sin deletionProtection.
+- Todos los recursos con `RemovalPolicy.DESTROY`, sin deletionProtection ni terminationProtection, salvo los stacks `g1-readflow-storage` y `g1-readflow-auth`: terminationProtection y tabla, bucket y user pool con `RETAIN` ([ADR 0014](docs/adr/0014-datos-protegidos-contra-destroy.md)).
 
 ## Zonas prohibidas
 

@@ -8,11 +8,16 @@ const corsOrigins = ['http://localhost:4321', 'https://main.example.amplifyapp.c
 
 describe('StorageStack', () => {
   let template: Template;
+  let stack: StorageStack;
 
   beforeAll(() => {
     const app = new App({ context: { corsOrigins } });
-    const stack = new StorageStack(app, 'TestStorage', { env });
+    stack = new StorageStack(app, 'TestStorage', { env });
     template = Template.fromStack(stack);
+  });
+
+  it('enables termination protection', () => {
+    expect(stack.terminationProtection).toBe(true);
   });
 
   it('creates the single table from the data model spec', () => {
@@ -35,10 +40,10 @@ describe('StorageStack', () => {
     });
   });
 
-  it('deletes the table when the stack is destroyed', () => {
+  it('retains the table when the stack is destroyed', () => {
     template.hasResource('AWS::DynamoDB::Table', {
-      DeletionPolicy: 'Delete',
-      UpdateReplacePolicy: 'Delete',
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
     });
   });
 
@@ -96,12 +101,12 @@ describe('StorageStack', () => {
     });
   });
 
-  it('deletes the bucket and its objects when the stack is destroyed', () => {
+  it('retains the bucket and its objects when the stack is destroyed', () => {
     template.hasResource('AWS::S3::Bucket', {
-      DeletionPolicy: 'Delete',
-      UpdateReplacePolicy: 'Delete',
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
     });
-    template.resourceCountIs('Custom::S3AutoDeleteObjects', 1);
+    template.resourceCountIs('Custom::S3AutoDeleteObjects', 0);
   });
 
   it('exports the table and bucket names', () => {

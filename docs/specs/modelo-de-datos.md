@@ -11,7 +11,7 @@ Contrato de datos que comparten la API de libros, la Lambda de metadata y la Lam
 | Billing | On-demand (`PAY_PER_REQUEST`) |
 | PITR | Activado |
 | Stream | `NEW_AND_OLD_IMAGES` |
-| Removal policy | `DESTROY` (ADR 0004) |
+| Removal policy | `RETAIN`, stack con terminationProtection (ADR 0014) |
 | GSI | Ninguno |
 | TTL | Ninguno |
 
@@ -192,7 +192,7 @@ Bucket privado (Block Public Access completo). El navegador sube y descarga solo
 | TLS | Obligatorio (`enforceSSL`) |
 | CORS | `PUT` y `GET`, header `content-type`; orígenes desde el context `corsOrigins` de `infrastructure/cdk.json` |
 | Versioning / lifecycle | Ninguno |
-| Removal policy | `DESTROY` + `autoDeleteObjects` |
+| Removal policy | `RETAIN`, sin `autoDeleteObjects` (ADR 0014) |
 
 ```
 users/<sub>/books/<ulid>/book.epub

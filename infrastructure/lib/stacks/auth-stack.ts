@@ -13,7 +13,7 @@ export class AuthStack extends Stack {
   readonly userPoolClient: UserPoolClient;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
-    super(scope, id, props);
+    super(scope, id, { ...props, terminationProtection: true });
 
     this.userPool = new UserPool(this, 'UserPool', {
       userPoolName: resourceName('userpool'),
@@ -23,7 +23,7 @@ export class AuthStack extends Stack {
       signInCaseSensitive: false,
       autoVerify: { email: true },
       accountRecovery: AccountRecovery.EMAIL_ONLY,
-      removalPolicy: RemovalPolicy.DESTROY,
+      removalPolicy: RemovalPolicy.RETAIN,
     });
 
     this.userPoolClient = this.userPool.addClient('WebClient', {
