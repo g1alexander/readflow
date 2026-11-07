@@ -48,6 +48,7 @@ Ver el diagrama en [`architecture.drawio`](./architecture.drawio).
 - **Envío al Kindle event-driven.** El cambio de estado a Reading queda en DynamoDB y Streams dispara la Lambda que arma el correo, en vez de enviarlo dentro de la misma llamada a la API. Si SES falla se reintenta sin romper la respuesta al usuario.
 - **SES en vez de SNS.** SNS no envía adjuntos ni entrega a direcciones que no confirmaron la suscripción, así que no sirve para el envío al Kindle.
 - **Python en el backend** aunque el frontend sea TypeScript: al final el parseo del EPUB salió con la stdlib (zipfile + ElementTree, [ADR 0009](./adr/0009-lambda-metadata-eventbridge-parser-stdlib.md)), así que las Lambdas no tienen dependencias ni layers.
+- **Deploy del backend con GitHub Actions.** Cada push a `main` que toca `serverless/`, `infrastructure/` o `.github/workflows/` corre lint y tests y hace `cdk deploy --all` asumiendo por OIDC el rol `ci-cd-github-actions`, sin claves de larga duración. El front lo sigue construyendo Amplify. Ver [runbook](./runbooks/github-actions-oidc.md).
 
 ## Pendientes por definir
 
