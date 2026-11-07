@@ -1,6 +1,6 @@
 # frontend
 
-Astro 7 (SSG) + Tailwind 4 + TypeScript.
+Astro 7 (SSG) + Tailwind 4 + TypeScript
 
 ```sh
 pnpm install
