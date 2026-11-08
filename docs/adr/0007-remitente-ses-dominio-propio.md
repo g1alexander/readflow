@@ -10,7 +10,7 @@ El envío a Kindle (ALE-18) sale por SES hacia una dirección `@kindle.com`. Ama
 
 ## Decision
 
-SES envía desde `kindle@chess-mentor.com`, con identidad de dominio verificada por Easy DKIM.
+SES envía desde `kindle@g1alexander.com`, con identidad de dominio verificada por Easy DKIM.
 
 - El dominio está registrado fuera de AWS; su DNS se delega a una hosted zone pública de Route 53 creada a mano ([runbook](../runbooks/route53-hosted-zone-dominio-externo.md)), fuera de CDK.
 - `MailStack` importa la zona con `HostedZone.fromLookup` (context `mailDomain` en `cdk.json`), crea `ses.EmailIdentity` con `Identity.publicHostedZone` (los CNAME de DKIM) y un TXT `_dmarc` con `p=none`.

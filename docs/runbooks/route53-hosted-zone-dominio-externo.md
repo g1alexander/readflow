@@ -1,6 +1,6 @@
 # Crear una hosted zone en Route 53 con el dominio en otro registrador
 
-Para cuando el dominio está comprado fuera de AWS (GoDaddy, Namecheap, Cloudflare…) y se quiere que su DNS lo maneje Route 53. En readflow se usa con `chess-mentor.com`: dominio remitente de SES (ALE-11) y dominio del front en Amplify (`readflow.chess-mentor.com`, ALE-30).
+Para cuando el dominio está comprado fuera de AWS (GoDaddy, Namecheap, Cloudflare…) y se quiere que su DNS lo maneje Route 53. En readflow se usa con `g1alexander.com`: dominio remitente de SES (ALE-11) y dominio del front en Amplify (`readflow.g1alexander.com`, ALE-30).
 
 La zona se crea a mano, fuera de CDK: así los nameservers no cambian aunque se destruya y recree un stack. CDK la importa con `HostedZone.fromLookup`.
 
@@ -13,7 +13,7 @@ Cambiar los nameservers mueve **todo** el DNS del dominio a Route 53. Si el domi
 ## 1. Crear la hosted zone
 
 1. Consola AWS → **Route 53 → Hosted zones → Create hosted zone**. Route 53 es global; la región no importa.
-2. **Domain name:** `<dominio>` (por ejemplo `chess-mentor.com`).
+2. **Domain name:** `<dominio>` (por ejemplo `g1alexander.com`).
 3. **Type:** `Public hosted zone`.
 4. **Create hosted zone**.
 

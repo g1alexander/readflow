@@ -16,10 +16,10 @@
   "context": {
     "corsOrigins": [
       "http://localhost:4321",
-      "https://readflow.chess-mentor.com"
+      "https://readflow.g1alexander.com"
     ],
-    "mailDomain": "chess-mentor.com",
-    "appDomain": "chess-mentor.com",
+    "mailDomain": "g1alexander.com",
+    "appDomain": "g1alexander.com",
     "appSubdomain": "readflow"
   }
 }

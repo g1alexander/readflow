@@ -9,7 +9,7 @@ CDK v2 en TypeScript, `us-east-1`.
 | `g1-readflow-auth` | Cognito User Pool + app client SRP |
 | `g1-readflow-realtime` | AppSync Events: canal de avisos por usuario |
 | `g1-readflow-serverless` | HTTP API + JWT authorizer de Cognito + Lambdas `api`, `metadata`, `kindle`, `notify` (código en `../serverless/src`) |
-| `g1-readflow-frontend` | Amplify Hosting, rama `main` en `readflow.chess-mentor.com` ([ADR 0012](../docs/adr/0012-dominio-custom-amplify-en-cdk.md)) |
+| `g1-readflow-frontend` | Amplify Hosting, rama `main` en `readflow.g1alexander.com` ([ADR 0012](../docs/adr/0012-dominio-custom-amplify-en-cdk.md)) |
 
 ```sh
 pnpm build   # type-check
