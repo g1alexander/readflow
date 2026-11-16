@@ -7,6 +7,7 @@ from api.errors import Conflict, InvalidRequest, NotFound
 from api.routes import authors, books, settings, uploads
 
 logger = logging.getLogger()
+logging.getLogger("botocore").setLevel(logging.WARNING)
 
 ROUTES = {
     "GET /books": lambda sub, event: (

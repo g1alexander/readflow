@@ -13,6 +13,7 @@ from common.ulid import new_ulid
 from metadata import epub
 
 logger = logging.getLogger()
+logging.getLogger("botocore").setLevel(logging.WARNING)
 
 EPUB_KEY = re.compile(r"^users/(?P<sub>[^/]+)/books/(?P<book_id>[^/]+)/book\.epub$")
 

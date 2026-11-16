@@ -13,6 +13,7 @@ from common.slug import slugify
 from common.ulid import new_ulid
 
 logger = logging.getLogger()
+logging.getLogger("botocore").setLevel(logging.WARNING)
 
 MAX_EPUB_SIZE = 28 * 1024 * 1024
 CLIENT_CONFIG = Config(connect_timeout=5, read_timeout=20, retries={"max_attempts": 3})

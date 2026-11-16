@@ -10,6 +10,7 @@ from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 
 logger = logging.getLogger()
+logging.getLogger("botocore").setLevel(logging.WARNING)
 
 NAMESPACE = "readflow"
 TIMEOUT_SECONDS = 10
