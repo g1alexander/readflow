@@ -7,7 +7,6 @@ from api.errors import Conflict, InvalidRequest, NotFound
 from api.routes import authors, books, settings, uploads
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 ROUTES = {
     "GET /books": lambda sub, event: (
@@ -88,6 +87,8 @@ def handler(event, context):
     except Conflict as e:
         return _error(409, e.code, str(e))
     except Exception:
-        logger.exception("Unhandled error in %s", route_key)
+        logger.exception(
+            "Unhandled error in %s", route_key, extra={"routeKey": route_key, "sub": sub}
+        )
         return _error(500, "internal", "Internal error")
     return _response(status, body)

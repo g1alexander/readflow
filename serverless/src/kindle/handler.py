@@ -13,7 +13,6 @@ from common.slug import slugify
 from common.ulid import new_ulid
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 MAX_EPUB_SIZE = 28 * 1024 * 1024
 CLIENT_CONFIG = Config(connect_timeout=5, read_timeout=20, retries={"max_attempts": 3})
@@ -66,15 +65,25 @@ def _process(new: dict, old: dict) -> None:
     sub = new["PK"].removeprefix("USER#")
     book_id = new["id"]
     key = _values({"PK": new["PK"], "SK": new["SK"]})
+    context = {"bookId": book_id, "sub": sub, "requestedAt": requested_at}
     if not _claim(key, requested_at):
-        logger.info("Request %s of book %s already taken, skipping", requested_at, book_id)
+        logger.info(
+            "Request %s of book %s already taken, skipping", requested_at, book_id, extra=context
+        )
         return
     try:
         try:
             _send(sub, new)
         except SendFailed as error:
+            logger.warning(
+                "Kindle send of book %s failed: %s",
+                book_id,
+                error,
+                extra={**context, "reason": str(error)},
+            )
             _finish(key, book_id, requested_at, "failed", str(error))
         else:
+            logger.info("Kindle send of book %s succeeded", book_id, extra=context)
             _finish(key, book_id, requested_at, "sent", None)
     except Exception:
         _release(key, requested_at)
@@ -114,7 +123,9 @@ def _release(key: dict, requested_at: str) -> None:
             ExpressionAttributeValues=_values({":req": requested_at}),
         )
     except ClientError:
-        logger.exception("Could not release request %s", requested_at)
+        logger.exception(
+            "Could not release request %s", requested_at, extra={"requestedAt": requested_at}
+        )
 
 
 def _kindle_email(sub: str) -> str | None:
@@ -156,7 +167,10 @@ def _send(sub: str, book: dict) -> None:
             Content={"Raw": {"Data": message.as_bytes()}},
         )
     except ClientError as error:
-        logger.warning("SES rejected book %s: %s", book["id"], error.response["Error"]["Message"])
+        code = error.response["Error"]["Code"]
+        logger.warning(
+            "SES rejected book %s: %s", book["id"], code, extra={"bookId": book["id"], "code": code}
+        )
         raise SendFailed("ses_error") from error
 
 
@@ -206,4 +220,8 @@ def _finish(key: dict, book_id: str, requested_at: str, status: str, error: str 
         reasons = exc.response.get("CancellationReasons", [])
         if not reasons or reasons[0].get("Code") != "ConditionalCheckFailed":
             raise
-        logger.info("Book %s has a newer Kindle request, skipping result", book_id)
+        logger.info(
+            "Book %s has a newer Kindle request, skipping result",
+            book_id,
+            extra={"bookId": book_id},
+        )

@@ -9,13 +9,16 @@ import { Rule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { ManagedPolicy, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import {
+  ApplicationLogLevel,
   Architecture,
   Code,
   FilterCriteria,
   FilterRule,
   Function,
+  LoggingFormat,
   Runtime,
   StartingPosition,
+  SystemLogLevel,
 } from 'aws-cdk-lib/aws-lambda';
 import { SqsDestination } from 'aws-cdk-lib/aws-lambda-destinations';
 import { DynamoEventSource, SqsDlq } from 'aws-cdk-lib/aws-lambda-event-sources';
@@ -41,6 +44,9 @@ export interface ServerlessStackProps extends StackProps {
 
 export class ServerlessStack extends Stack {
   readonly apiUrl: string;
+  readonly api: HttpApi;
+  readonly functions: Record<'api' | 'metadata' | 'kindle' | 'notify', Function>;
+  readonly failureQueues: Record<'metadata' | 'kindle', Queue>;
 
   constructor(scope: Construct, id: string, props: ServerlessStackProps) {
     super(scope, id, props);
@@ -71,6 +77,9 @@ export class ServerlessStack extends Stack {
           retention: RetentionDays.ONE_WEEK,
           removalPolicy: RemovalPolicy.DESTROY,
         }),
+        loggingFormat: LoggingFormat.JSON,
+        applicationLogLevelV2: ApplicationLogLevel.INFO,
+        systemLogLevelV2: SystemLogLevel.WARN,
       };
     };
 
@@ -260,6 +269,14 @@ export class ServerlessStack extends Stack {
     }
 
     this.apiUrl = api.apiEndpoint;
+    this.api = api;
+    this.functions = {
+      api: apiFunction,
+      metadata: metadataFunction,
+      kindle: kindleFunction,
+      notify: notifyFunction,
+    };
+    this.failureQueues = { metadata: metadataFailures, kindle: kindleFailures };
 
     new CfnOutput(this, 'ApiUrl', { value: this.apiUrl });
   }

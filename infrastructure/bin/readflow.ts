@@ -4,6 +4,7 @@ import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { ServerlessStack } from '../lib/stacks/serverless-stack.js';
 import { FrontendStack } from '../lib/stacks/frontend-stack.js';
 import { MailStack } from '../lib/stacks/mail-stack.js';
+import { ObservabilityStack } from '../lib/stacks/observability-stack.js';
 import { RealtimeStack } from '../lib/stacks/realtime-stack.js';
 import { StorageStack } from '../lib/stacks/storage-stack.js';
 
@@ -40,4 +41,12 @@ new FrontendStack(app, resourceName('frontend'), {
   userPoolClientId: auth.userPoolClient.userPoolClientId,
   apiUrl: serverless.apiUrl,
   eventsEndpoint: realtime.eventsEndpoint,
+});
+
+new ObservabilityStack(app, resourceName('observability'), {
+  env,
+  api: serverless.api,
+  functions: serverless.functions,
+  failureQueues: serverless.failureQueues,
+  streamFunctions: { kindle: serverless.functions.kindle, notify: serverless.functions.notify },
 });

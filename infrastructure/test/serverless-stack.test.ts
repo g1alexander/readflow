@@ -105,6 +105,20 @@ describe('ServerlessStack', () => {
     });
   });
 
+  it('logs every Lambda as JSON at INFO', () => {
+    const functions = template.findResources('AWS::Lambda::Function', {
+      Properties: { FunctionName: Match.stringLikeRegexp('^g1-readflow-') },
+    });
+    expect(Object.keys(functions)).toHaveLength(4);
+    for (const fn of Object.values(functions)) {
+      expect(fn.Properties.LoggingConfig).toMatchObject({
+        LogFormat: 'JSON',
+        ApplicationLogLevel: 'INFO',
+        SystemLogLevel: 'WARN',
+      });
+    }
+  });
+
   it('keeps the Lambda logs one week and deletes them with the stack', () => {
     template.resourceCountIs('AWS::Logs::LogGroup', 4);
     template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 7 });

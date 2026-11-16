@@ -13,7 +13,6 @@ from common.ulid import new_ulid
 from metadata import epub
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 EPUB_KEY = re.compile(r"^users/(?P<sub>[^/]+)/books/(?P<book_id>[^/]+)/book\.epub$")
 
@@ -43,7 +42,7 @@ def handler(event, context):
     key = detail["object"]["key"]
     match = EPUB_KEY.match(key)
     if not match:
-        logger.warning("Ignoring unexpected key %s", key)
+        logger.warning("Ignoring unexpected key %s", key, extra={"key": key})
         return
     sub, book_id = match["sub"], match["book_id"]
     size = detail["object"]["size"]
@@ -51,7 +50,12 @@ def handler(event, context):
     try:
         metadata = epub.parse(body)
     except epub.EpubError as error:
-        logger.warning("Invalid EPUB %s: %s", key, error)
+        logger.warning(
+            "Invalid EPUB %s: %s",
+            key,
+            error,
+            extra={"bookId": book_id, "sub": sub, "reason": str(error)},
+        )
         _finish(
             sub,
             book_id,
@@ -165,7 +169,11 @@ def _finish(sub: str, book_id: str, fields: dict, kind: str, data: dict) -> None
         reasons = error.response.get("CancellationReasons", [])
         if not reasons or reasons[0].get("Code") != "ConditionalCheckFailed":
             raise
-        logger.info("Book %s is no longer pending, skipping", book_id)
+        logger.info("Book %s is no longer pending, skipping", book_id, extra={"bookId": book_id})
+        return
+    logger.info(
+        "Ingest of book %s finished: %s", book_id, kind, extra={"bookId": book_id, "kind": kind}
+    )
 
 
 def _fail_kindle(book_id: str, key: dict) -> None:
@@ -223,3 +231,6 @@ def _fail_kindle(book_id: str, key: dict) -> None:
         reasons = error.response.get("CancellationReasons", [])
         if not reasons or reasons[0].get("Code") != "ConditionalCheckFailed":
             raise
+        logger.info(
+            "Book %s has no Kindle request to fail, skipping", book_id, extra={"bookId": book_id}
+        )

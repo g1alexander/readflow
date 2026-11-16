@@ -10,7 +10,6 @@ from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 NAMESPACE = "readflow"
 TIMEOUT_SECONDS = 10
@@ -53,8 +52,21 @@ def _publish(sub: str, book_id: str) -> None:
     prepared = urllib.request.Request(
         endpoint, data=body.encode(), headers=dict(request.headers), method="POST"
     )
-    with urllib.request.urlopen(prepared, timeout=TIMEOUT_SECONDS) as response:
-        result = json.loads(response.read() or b"{}")
+    context = {"bookId": book_id, "sub": sub}
+    try:
+        with urllib.request.urlopen(prepared, timeout=TIMEOUT_SECONDS) as response:
+            result = json.loads(response.read() or b"{}")
+    except OSError as error:
+        logger.error(
+            "AppSync publish of book %s failed: %s",
+            book_id,
+            error,
+            extra={**context, "reason": str(error)},
+        )
+        raise
     if result.get("failed"):
+        logger.error(
+            "AppSync rejected book %s", book_id, extra={**context, "reason": str(result["failed"])}
+        )
         raise RuntimeError(f"Publish failed for book {book_id}: {result['failed']}")
-    logger.info("Notified change of book %s", book_id)
+    logger.info("Notified change of book %s", book_id, extra=context)

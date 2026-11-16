@@ -262,3 +262,41 @@ def test_ignores_unexpected_keys(clients, key):
 
     s3.get_object.assert_not_called()
     dynamodb.transact_write_items.assert_not_called()
+
+
+def test_logs_the_ingest_outcome(clients, caplog):
+    _, s3 = clients
+    _upload(s3, FICCIONES)
+
+    with caplog.at_level("INFO"):
+        handler.handler(_event(), None)
+
+    record = next(r for r in caplog.records if "finished" in r.getMessage())
+    assert (record.bookId, record.kind) == ("BOOKID", "ingest_ready")
+
+
+def test_logs_invalid_epubs_with_their_reason(clients, caplog):
+    _, s3 = clients
+    _upload(s3, b"not a zip")
+
+    handler.handler(_event(), None)
+
+    record = next(r for r in caplog.records if r.levelname == "WARNING")
+    assert (record.bookId, record.sub, record.reason) == ("BOOKID", "u1", "not a zip file")
+
+
+def test_logs_when_there_is_no_kindle_request_to_fail(clients, caplog):
+    dynamodb, s3 = clients
+    _upload(s3, b"not a zip")
+    dynamodb.transact_write_items.side_effect = [
+        None,
+        _client_error(
+            "TransactionCanceledException",
+            CancellationReasons=[{"Code": "ConditionalCheckFailed"}, {"Code": "None"}],
+        ),
+    ]
+
+    with caplog.at_level("INFO"):
+        handler.handler(_event(), None)
+
+    assert any("no Kindle request" in r.getMessage() for r in caplog.records)

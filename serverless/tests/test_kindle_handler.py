@@ -151,11 +151,16 @@ def test_skips_a_request_already_taken(clients):
         ),
     ],
 )
-def test_marks_failures_as_failed(clients, setup, error):
+def test_marks_failures_as_failed(clients, caplog, setup, error):
     dynamodb, s3, ses = clients
     setup(dynamodb, s3, ses)
 
-    handler.handler(_request(), None)
+    with caplog.at_level("INFO"):
+        handler.handler(_request(), None)
+
+    failure = next(r for r in caplog.records if r.levelname == "WARNING" and hasattr(r, "reason"))
+    assert (failure.bookId, failure.sub, failure.reason) == ("BOOKID", "u1", error)
+    assert "me@kindle.com" not in caplog.text
 
     _, _, fields, event = _result(dynamodb)
     assert fields == {
@@ -211,3 +216,11 @@ def test_flattens_line_breaks_in_the_subject(clients):
     handler.handler(event, None)
 
     assert b"Subject: Fic ciones" in ses.send_email.call_args.kwargs["Content"]["Raw"]["Data"]
+
+
+def test_logs_a_successful_send(clients, caplog):
+    with caplog.at_level("INFO"):
+        handler.handler(_request(), None)
+
+    record = next(r for r in caplog.records if "succeeded" in r.getMessage())
+    assert (record.levelname, record.bookId, record.requestedAt) == ("INFO", "BOOKID", REQ)

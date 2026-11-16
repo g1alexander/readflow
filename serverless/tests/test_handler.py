@@ -61,12 +61,15 @@ def test_missing_sub_is_unauthorized():
     assert _body(response)["error"]["code"] == "unauthorized"
 
 
-def test_unhandled_error_is_internal_without_details():
+def test_unhandled_error_is_internal_without_details(caplog):
     with patch.object(handler.books, "list_books", side_effect=RuntimeError("secret detail")):
         response = handler.handler(_event(), None)
 
     assert response["statusCode"] == 500
     assert _body(response) == {"error": {"code": "internal", "message": "Internal error"}}
+    record = next(r for r in caplog.records if r.levelname == "ERROR")
+    assert record.routeKey == "GET /books"
+    assert record.sub
 
 
 def _book_event(route_key, book_id="b1", **extra):

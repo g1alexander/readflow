@@ -92,3 +92,25 @@ def test_raises_when_publish_reports_failures(urlopen):
 
     with pytest.raises(RuntimeError):
         handler.handler({"Records": [_record(BOOK, {**BOOK, "ingest": "pending"})]}, None)
+
+
+def test_logs_rejected_publishes(urlopen, caplog):
+    urlopen.return_value.__enter__.return_value.read.return_value = (
+        b'{"successful": [], "failed": [{"identifier": "x", "index": 0}]}'
+    )
+
+    with pytest.raises(RuntimeError):
+        handler.handler({"Records": [_record(BOOK, {**BOOK, "ingest": "pending"})]}, None)
+
+    record = next(r for r in caplog.records if r.levelname == "ERROR")
+    assert (record.bookId, record.sub) == ("BOOKID", "u1")
+
+
+def test_logs_and_raises_connection_errors(urlopen, caplog):
+    urlopen.side_effect = TimeoutError("timed out")
+
+    with pytest.raises(TimeoutError):
+        handler.handler({"Records": [_record(BOOK, {**BOOK, "ingest": "pending"})]}, None)
+
+    record = next(r for r in caplog.records if r.levelname == "ERROR")
+    assert (record.bookId, record.reason) == ("BOOKID", "timed out")
