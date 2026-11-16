@@ -10,7 +10,7 @@ Las 4 Lambdas registraban texto plano sin contexto, y algunos fallos solo quedab
 
 ## Decision
 
-Las Lambdas usan `loggingFormat: JSON` con `applicationLogLevelV2: INFO` y `systemLogLevelV2: WARN`. El código usa `logging` de la stdlib sin `setLevel`, y el contexto va en `extra={}`.
+Las Lambdas usan `loggingFormat: JSON` con `applicationLogLevelV2: INFO` y `systemLogLevelV2: WARN`. El código usa `logging` de la stdlib sin `setLevel` en el root, y el contexto va en `extra={}`. `botocore` queda en WARNING para que no registre sus INFO.
 
 - Se registran los fallos en los puntos críticos (WARN/ERROR) y 1 INFO con el desenlace de cada flujo (ingest, envío al Kindle). Solo IDs (`bookId`, `sub`, `requestedAt`), y para SES solo el código de error. Nunca emails, títulos ni payloads.
 - El stack `g1-readflow-observability` tiene el dashboard `g1-readflow-dashboard`. Muestra, por Lambda, invocaciones, errores y duración p95; del API, requests, 4xx, 5xx y latencia p95; los mensajes visibles en las DLQ; el `IteratorAge` de kindle y notify, y los últimos ERROR/WARN con Logs Insights.
