@@ -25,15 +25,23 @@ Trust policy:
 ```json
 {
   "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": { "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com" },
-    "Action": "sts:AssumeRoleWithWebIdentity",
-    "Condition": {
-      "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
-      "StringLike": { "token.actions.githubusercontent.com:sub": "repo:g1alexander@<OWNER_ID>/readflow@<REPO_ID>:ref:refs/heads/main" }
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": "repo:g1alexander@<OWNER_ID>/readflow@<REPO_ID>:ref:refs/heads/main"
+        }
+      }
     }
-  }]
+  ]
 }
 ```
 
@@ -42,7 +50,7 @@ GitHub manda el `sub` con los IDs inmutables del owner y del repo (`owner@id/rep
 Permisos del rol:
 
 - `sts:AssumeRole` sobre los roles de bootstrap `arn:aws:iam::<ACCOUNT_ID>:role/cdk-hnb659fds-*`.
-- `ssm:GetParameter` sobre el parámetro `/g1-readflow/github-token`, que `g1-readflow-frontend` lee durante el deploy.
+- `ssm:GetParameter` sobre el parámetro `/g1-amplify/github-token`, que `g1-readflow-frontend` lee durante el deploy.
 
 ## 3. Secret en GitHub
 

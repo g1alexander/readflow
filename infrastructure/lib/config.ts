@@ -4,7 +4,7 @@ export const config = {
   github: {
     owner: 'g1alexander',
     repository: 'readflow',
-    tokenParameterName: '/g1-readflow/github-token',
+    tokenParameterName: '/g1-amplify/github-token',
   },
   frontend: {
     appRoot: 'frontend',

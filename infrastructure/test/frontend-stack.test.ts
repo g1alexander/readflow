@@ -7,7 +7,9 @@ describe('FrontendStack', () => {
   let template: Template;
 
   beforeAll(() => {
-    const app = new App({ context: { appDomain: 'example.com', appSubdomain: 'readflow' } });
+    const app = new App({
+      context: { appDomain: 'example.com', appSubdomain: 'readflow' },
+    });
     const stack = new FrontendStack(app, 'TestFrontend', {
       env: { account: '123456789012', region: 'us-east-1' },
       userPoolId: 'us-east-1_TestPool',
@@ -21,7 +23,7 @@ describe('FrontendStack', () => {
   it('connects the repo through the GitHub App access token, not OAuth', () => {
     template.hasResourceProperties('AWS::Amplify::App', {
       Repository: 'https://github.com/g1alexander/readflow',
-      AccessToken: '{{resolve:ssm:/g1-readflow/github-token}}',
+      AccessToken: '{{resolve:ssm:/g1-amplify/github-token}}',
       OauthToken: Match.absent(),
       Platform: 'WEB',
     });
@@ -49,7 +51,10 @@ describe('FrontendStack', () => {
     template.hasResourceProperties('AWS::Amplify::App', {
       EnvironmentVariables: Match.arrayWith([
         { Name: 'PUBLIC_API_URL', Value: 'https://api.example.com' },
-        { Name: 'PUBLIC_EVENTS_ENDPOINT', Value: 'https://events.example.com/event' },
+        {
+          Name: 'PUBLIC_EVENTS_ENDPOINT',
+          Value: 'https://events.example.com/event',
+        },
       ]),
     });
   });

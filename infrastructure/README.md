@@ -2,14 +2,14 @@
 
 CDK v2 en TypeScript, `us-east-1`.
 
-| Stack | Crea |
-| -- | -- |
-| `g1-readflow-storage` | Tabla DynamoDB `g1-readflow-table` + bucket S3 de EPUB `g1-readflow-bucket` |
-| `g1-readflow-mail` | Identidad SES del dominio remitente (DKIM) + registro DMARC |
-| `g1-readflow-auth` | Cognito User Pool + app client SRP |
-| `g1-readflow-realtime` | AppSync Events: canal de avisos por usuario |
-| `g1-readflow-serverless` | HTTP API + JWT authorizer de Cognito + Lambdas `api`, `metadata`, `kindle`, `notify` (código en `../serverless/src`) |
-| `g1-readflow-frontend` | Amplify Hosting, rama `main` en `readflow.g1alexander.com` ([ADR 0012](../docs/adr/0012-dominio-custom-amplify-en-cdk.md)) |
+| Stack                    | Crea                                                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `g1-readflow-storage`    | Tabla DynamoDB `g1-readflow-table` + bucket S3 de EPUB `g1-readflow-bucket`                                                |
+| `g1-readflow-mail`       | Identidad SES del dominio remitente (DKIM) + registro DMARC                                                                |
+| `g1-readflow-auth`       | Cognito User Pool + app client SRP                                                                                         |
+| `g1-readflow-realtime`   | AppSync Events: canal de avisos por usuario                                                                                |
+| `g1-readflow-serverless` | HTTP API + JWT authorizer de Cognito + Lambdas `api`, `metadata`, `kindle`, `notify` (código en `../serverless/src`)       |
+| `g1-readflow-frontend`   | Amplify Hosting, rama `main` en `readflow.g1alexander.com` ([ADR 0012](../docs/adr/0012-dominio-custom-amplify-en-cdk.md)) |
 
 ```sh
 pnpm build   # type-check
@@ -21,7 +21,7 @@ pnpm diff
 ## Setup inicial
 
 1. Instalar la Amplify GitHub App en el repo.
-2. PAT classic (`admin:repo_hook`) en SSM Parameter Store como `String` `/g1-readflow/github-token` (`aws ssm put-parameter --name /g1-readflow/github-token --type String --value <PAT> --profile alex`).
+2. PAT classic (`admin:repo_hook`) en SSM Parameter Store como `String` `/g1-amplify/github-token` (`aws ssm put-parameter --name /g1-amplify/github-token --type String --value <PAT> --profile alex`).
 3. `pnpm exec cdk bootstrap --profile alex` y `pnpm run deploy --all --profile alex`.
 4. Deploy continuo: push a `main` que toque `serverless/**`, `infrastructure/**` o `.github/workflows/**` → GitHub Actions corre lint, tests y `cdk deploy --all` con OIDC ([runbook](../docs/runbooks/github-actions-oidc.md)).
 

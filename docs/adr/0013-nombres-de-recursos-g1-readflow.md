@@ -12,23 +12,24 @@ Los nombres eran mezcla: unos fijos con `readflow` (`readflow-api`, tabla `readf
 
 Cada recurso que CDK permite nombrar se llama `g1-readflow-<servicio>`, generado con `resourceName()` de `infrastructure/lib/config.ts`.
 
-| Recurso | Nombre |
-|---|---|
-| Stacks | `g1-readflow-{storage,mail,auth,realtime,serverless,frontend}` |
-| Tabla / bucket | `g1-readflow-table` / `g1-readflow-bucket` |
-| Lambdas | `g1-readflow-{api,metadata,kindle,notify}` |
-| Roles de las Lambdas | `g1-readflow-<servicio>-role` |
-| Log groups | `/aws/lambda/g1-readflow-<servicio>` |
-| Colas | `g1-readflow-{metadata,kindle}-failures` |
-| User pool / client | `g1-readflow-userpool` / `g1-readflow-web` |
-| Event API / HTTP API | `g1-readflow-events` / `g1-readflow-api` |
-| Regla EventBridge | `g1-readflow-epub-uploaded` |
-| App Amplify | `g1-readflow-frontend` |
-| Parámetro SSM | `/g1-readflow/github-token` |
+| Recurso              | Nombre                                                         |
+| -------------------- | -------------------------------------------------------------- |
+| Stacks               | `g1-readflow-{storage,mail,auth,realtime,serverless,frontend}` |
+| Tabla / bucket       | `g1-readflow-table` / `g1-readflow-bucket`                     |
+| Lambdas              | `g1-readflow-{api,metadata,kindle,notify}`                     |
+| Roles de las Lambdas | `g1-readflow-<servicio>-role`                                  |
+| Log groups           | `/aws/lambda/g1-readflow-<servicio>`                           |
+| Colas                | `g1-readflow-{metadata,kindle}-failures`                       |
+| User pool / client   | `g1-readflow-userpool` / `g1-readflow-web`                     |
+| Event API / HTTP API | `g1-readflow-events` / `g1-readflow-api`                       |
+| Regla EventBridge    | `g1-readflow-epub-uploaded`                                    |
+| App Amplify          | `g1-readflow-frontend`                                         |
+| Parámetro SSM        | `/g1-amplify/github-token`                                     |
 
 `<servicio>` es la función del recurso, no su tipo (`g1-readflow-kindle`, no `g1-readflow-kindle-lambda`).
 
 Quedan fuera:
+
 - los roles que crea CDK por dentro (auto-delete del bucket, Amplify, custom resources);
 - el namespace de AppSync Events (`readflow`), que es parte de la ruta del canal y no un recurso ([spec realtime](../specs/realtime.md)).
 
